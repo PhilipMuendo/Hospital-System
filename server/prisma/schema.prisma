@@ -1,0 +1,238 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  PHYSICIAN
+  NURSE
+  BILLING
+}
+
+enum Sex {
+  MALE
+  FEMALE
+}
+
+enum CodeStatus {
+  FULL_CODE
+  DNR
+  DNI
+  COMFORT_CARE
+}
+
+enum PatientStatus {
+  ADMITTED
+  DISCHARGED
+}
+
+enum Severity {
+  HEALTHY
+  WARNING
+  CRITICAL
+}
+
+enum LabFlag {
+  NORMAL
+  LOW
+  HIGH
+}
+
+enum BillingStatus {
+  PAID
+  PENDING
+  DENIED
+}
+
+enum Payer {
+  SHA
+  IMARA_HEALTH_ASSURANCE
+  SELF_PAY
+}
+
+enum ORRoom {
+  OR_1
+  OR_2
+  OR_3
+  OR_4
+}
+
+enum SurgeryStatus {
+  CONFIRMED
+  IN_PROGRESS
+  DELAYED
+  CANCELLED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  primaryPatients     Patient[]     @relation("PrimaryPhysician")
+  surgeriesAsSurgeon  Surgery[]     @relation("Surgeon")
+  billingLinesCreated BillingLine[] @relation("BillingCreatedBy")
+  labsReviewed        LabResult[]   @relation("LabReviewedBy")
+  alertsResolved      Alert[]       @relation("AlertResolvedBy")
+}
+
+model Ward {
+  id          String @id @default(cuid())
+  name        String @unique
+  bedCapacity Int
+
+  patients Patient[]
+  alerts   Alert[]
+}
+
+model Patient {
+  id                String     @id @default(cuid())
+  ipNumber          String     @unique
+  nationalId        String?    @unique
+  name              String
+  dob               DateTime
+  sex               Sex
+  bloodType         String
+  nextOfKinName     String
+  nextOfKinPhone    String
+  nextOfKinRelation String
+  allergies         String[]   @default([])
+  codeStatus        CodeStatus @default(FULL_CODE)
+  chiefComplaint    String?
+  assessment        String?
+  carePlan          String[]   @default([])
+  avatarInitials    String
+
+  wardId String
+  ward   Ward   @relation(fields: [wardId], references: [id])
+  bed    String
+
+  primaryPhysicianId String
+  primaryPhysician   User   @relation("PrimaryPhysician", fields: [primaryPhysicianId], references: [id])
+
+  status       PatientStatus @default(ADMITTED)
+  admittedAt   DateTime      @default(now())
+  dischargedAt DateTime?
+
+  vitals       VitalReading[]
+  labs         LabResult[]
+  imaging      ImagingStudy[]
+  billingLines BillingLine[]
+  surgeries    Surgery[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VitalReading {
+  id         String   @id @default(cuid())
+  patientId  String
+  patient    Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  label      String
+  value      String
+  unit       String
+  status     Severity
+  recordedAt DateTime @default(now())
+
+  @@index([patientId, recordedAt])
+}
+
+model LabResult {
+  id           String    @id @default(cuid())
+  patientId    String
+  patient      Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  test         String
+  result       String
+  range        String
+  flag         LabFlag
+  collectedAt  DateTime
+  reviewed     Boolean   @default(false)
+  reviewedById String?
+  reviewedBy   User?     @relation("LabReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt   DateTime?
+
+  @@index([patientId])
+}
+
+model ImagingStudy {
+  id              String   @id @default(cuid())
+  patientId       String
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  study           String
+  modality        String
+  performedAt     DateTime
+  radiologistName String
+  impression      String
+
+  @@index([patientId])
+}
+
+model BillingLine {
+  id             String        @id @default(cuid())
+  patientId      String
+  patient        Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  description    String
+  code           String
+  amount         Decimal       @db.Decimal(10, 2)
+  currency       String        @default("KES")
+  payer          Payer
+  status         BillingStatus @default(PENDING)
+  mpesaReference String?
+  createdById    String
+  createdBy      User          @relation("BillingCreatedBy", fields: [createdById], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([patientId])
+  @@index([status])
+}
+
+model Surgery {
+  id        String        @id @default(cuid())
+  patientId String
+  patient   Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  procedure String
+  surgeonId String
+  surgeon   User          @relation("Surgeon", fields: [surgeonId], references: [id])
+  room      ORRoom
+  startsAt  DateTime
+  endsAt    DateTime
+  status    SurgeryStatus @default(CONFIRMED)
+  createdAt DateTime      @default(now())
+
+  @@index([room, startsAt, endsAt])
+}
+
+model Alert {
+  id           String    @id @default(cuid())
+  severity     Severity
+  message      String
+  wardId       String?
+  ward         Ward?     @relation(fields: [wardId], references: [id])
+  resolved     Boolean   @default(false)
+  resolvedById String?
+  resolvedBy   User?     @relation("AlertResolvedBy", fields: [resolvedById], references: [id])
+  resolvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+// Stand-in for the handful of dashboard KPIs with no natural backing
+// event log in this scope (e.g. Casualty wait time isn't derived from a
+// triage-timestamp system). Avg. Length of Stay and Discharges Today are
+// computed live from Patient rows instead of stored here.
+model HospitalMetric {
+  key   String @id
+  label String
+  value String
+  delta String
+  trend String
+}

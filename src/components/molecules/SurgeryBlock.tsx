@@ -1,25 +1,27 @@
 import { motion } from 'framer-motion'
 import type { CSSProperties } from 'react'
-import type { Surgery } from '../../data/mockData'
+import type { Surgery, SurgeryStatus } from '../../lib/types'
 import { cn } from '../../lib/utils'
 
 interface SurgeryBlockProps {
   surgery: Surgery
   style: CSSProperties
   colliding?: boolean
+  onDelete?: (id: string) => void
 }
 
-const statusTint: Record<Surgery['status'], string> = {
-  confirmed: 'var(--color-accent-500)',
-  'in-progress': 'var(--color-status-healthy)',
-  delayed: 'var(--color-status-critical)',
+const statusTint: Record<SurgeryStatus, string> = {
+  CONFIRMED: 'var(--color-accent-500)',
+  IN_PROGRESS: 'var(--color-status-healthy)',
+  DELAYED: 'var(--color-status-critical)',
+  CANCELLED: 'var(--color-mist-500)',
 }
 
 // A pill-shaped booking block for the DAW-style scheduling timeline.
 // When it overlaps a neighbor in the same room, a blurred underlay in
 // the same hue bleeds through with mix-blend-mode: screen — two soft
 // blobs visually merging rather than a hard clipped collision.
-export function SurgeryBlock({ surgery, style, colliding }: SurgeryBlockProps) {
+export function SurgeryBlock({ surgery, style, colliding, onDelete }: SurgeryBlockProps) {
   const tint = statusTint[surgery.status]
 
   return (
@@ -50,8 +52,24 @@ export function SurgeryBlock({ surgery, style, colliding }: SurgeryBlockProps) {
       >
         <span className="truncate text-[12.5px] font-semibold text-mist-50">{surgery.procedure}</span>
         <span className="truncate font-mono text-[11px] tabular text-mist-300">
-          {surgery.surgeon} · {surgery.patient}
+          {surgery.surgeon.name} · {surgery.patient.name}
         </span>
+
+        {onDelete && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(surgery.id)
+            }}
+            className="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-charcoal-950/70 text-mist-400 opacity-0 transition-opacity hover:text-status-critical group-hover:opacity-100"
+            title="Cancel booking"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            </svg>
+          </button>
+        )}
       </div>
     </motion.div>
   )

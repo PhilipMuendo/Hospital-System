@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
 
 const NAV_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', icon: RingIcon },
@@ -39,8 +40,26 @@ function LedgerIcon() {
   )
 }
 
+const roleLabel: Record<string, string> = {
+  ADMIN: 'Administrator',
+  PHYSICIAN: 'Physician',
+  NURSE: 'Nurse',
+  BILLING: 'Billing',
+}
+
+function initialsOf(name: string) {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase()
+}
+
 export function Sidebar() {
   const [active, setActive] = useState('dashboard')
+  const { user, logout } = useAuth()
 
   return (
     <aside className="texture-noise sticky top-0 flex h-svh w-[76px] shrink-0 flex-col items-center gap-8 border-r border-white/6 bg-charcoal-950 py-6 lg:w-[220px] lg:items-stretch lg:px-4">
@@ -51,7 +70,7 @@ export function Sidebar() {
           </svg>
         </div>
         <span className="hidden font-display text-[15px] font-semibold tracking-tight text-mist-50 lg:inline">
-          Meridian
+          Uzima
         </span>
       </div>
 
@@ -87,9 +106,38 @@ export function Sidebar() {
         <p className="mt-1 text-[13px] text-mist-200">Day · 07:00–19:00</p>
       </div>
 
-      <button className="mt-auto grid h-10 w-10 place-items-center rounded-full bg-surface-800 stroke-elevated lg:hidden">
-        <span className="font-display text-[13px] font-semibold text-mist-100">AO</span>
-      </button>
+      {user && (
+        <div className="hidden w-full items-center gap-2.5 border-t border-white/6 pt-3 lg:flex">
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-surface-800 stroke-elevated">
+            <span className="font-display text-[11px] font-semibold text-mist-100">{initialsOf(user.name)}</span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[12.5px] font-medium text-mist-100">{user.name}</p>
+            <p className="truncate text-[11px] text-mist-500">{roleLabel[user.role] ?? user.role}</p>
+          </div>
+          <button
+            type="button"
+            onClick={logout}
+            title="Sign out"
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-[var(--radius-2xs)] text-mist-500 hover:bg-white/5 hover:text-status-critical"
+          >
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+              <path d="M6 2H3.5A1.5 1.5 0 0 0 2 3.5v9A1.5 1.5 0 0 0 3.5 14H6M10.5 11l3-3-3-3M13 8H6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {user && (
+        <button
+          type="button"
+          onClick={logout}
+          title="Sign out"
+          className="mt-auto grid h-10 w-10 place-items-center rounded-full bg-surface-800 stroke-elevated lg:hidden"
+        >
+          <span className="font-display text-[13px] font-semibold text-mist-100">{initialsOf(user.name)}</span>
+        </button>
+      )}
     </aside>
   )
 }

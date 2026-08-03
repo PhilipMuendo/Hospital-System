@@ -1,5 +1,5 @@
 import { cn } from '../../lib/utils'
-import type { OccupancyStatus } from '../../data/mockData'
+import type { OccupancyStatus } from '../../lib/occupancy'
 
 interface BadgeProps {
   status: OccupancyStatus

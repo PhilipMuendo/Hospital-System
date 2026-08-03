@@ -6,9 +6,11 @@ interface ButtonProps {
   children: ReactNode
   variant?: 'primary' | 'ghost' | 'outline'
   size?: 'sm' | 'md'
+  type?: 'button' | 'submit'
   onClick?: () => void
   className?: string
   icon?: ReactNode
+  disabled?: boolean
 }
 
 const springTap = { type: 'spring', stiffness: 420, damping: 22 } as const
@@ -17,9 +19,11 @@ export function Button({
   children,
   variant = 'primary',
   size = 'md',
+  type = 'button',
   onClick,
   className,
   icon,
+  disabled,
 }: ButtonProps) {
   const base =
     'inline-flex items-center gap-2 rounded-[var(--radius-xs)] font-medium tracking-tight select-none whitespace-nowrap'
@@ -39,12 +43,13 @@ export function Button({
 
   return (
     <motion.button
-      type="button"
+      type={type}
       onClick={onClick}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.97 }}
+      disabled={disabled}
+      whileHover={disabled ? undefined : { scale: 1.02 }}
+      whileTap={disabled ? undefined : { scale: 0.97 }}
       transition={springTap}
-      className={cn(base, sizes[size], variants[variant], className)}
+      className={cn(base, sizes[size], variants[variant], disabled && 'opacity-50', className)}
     >
       {icon}
       {children}

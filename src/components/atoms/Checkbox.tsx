@@ -7,6 +7,7 @@ interface CheckboxProps {
   onChange: (next: boolean) => void
   label?: string
   className?: string
+  disabled?: boolean
 }
 
 const spring = { type: 'spring', stiffness: 380, damping: 24 } as const
@@ -14,21 +15,26 @@ const spring = { type: 'spring', stiffness: 380, damping: 24 } as const
 // A custom checkbox that morphs its own outline from a circle to a
 // rounded square while the check glyph draws itself in via pathLength —
 // no native <input type="checkbox"> in sight.
-export function Checkbox({ checked, onChange, label, className }: CheckboxProps) {
+export function Checkbox({ checked, onChange, label, className, disabled }: CheckboxProps) {
   const id = useId()
 
   return (
     <label
       htmlFor={id}
-      className={cn('inline-flex cursor-pointer items-center gap-2.5 select-none', className)}
+      className={cn(
+        'inline-flex items-center gap-2.5 select-none',
+        disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer',
+        className,
+      )}
     >
       <button
         id={id}
         role="checkbox"
         aria-checked={checked}
         type="button"
+        disabled={disabled}
         onClick={() => onChange(!checked)}
-        className="relative flex h-5 w-5 shrink-0 items-center justify-center outline-none"
+        className="relative flex h-5 w-5 shrink-0 items-center justify-center outline-none disabled:cursor-not-allowed"
       >
         <motion.span
           className="absolute inset-0 border"

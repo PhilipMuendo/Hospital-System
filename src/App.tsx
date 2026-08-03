@@ -21,8 +21,11 @@ function App() {
         <div className="relative mx-auto flex max-w-[1600px] flex-col gap-6 px-5 py-6 lg:px-10 lg:py-10">
           <header className="mount-in flex items-center justify-between">
             <div>
-              <h1 className="text-[26px] lg:text-[30px]">Command Center</h1>
-              <p className="mt-1 text-[13.5px] text-mist-400">Tuesday, August 2, 2026 &middot; Meridian General</p>
+              <h1 className="text-[26px] lg:text-[30px]">Command Centre</h1>
+              <p className="mt-1 text-[13.5px] text-mist-400">
+                {new Date().toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                {' '}&middot; Uzima General Hospital, Nairobi
+              </p>
             </div>
           </header>
 
@@ -36,7 +39,7 @@ function App() {
           <SchedulingGrid />
 
           <footer className="py-6 text-center text-[12px] text-mist-600">
-            Meridian Hospital Command &middot; design system preview &middot; synthetic data only
+            Uzima General Hospital &middot; Nairobi, Kenya &middot; internal staff portal &middot; synthetic data for demonstration
           </footer>
         </div>
       </main>

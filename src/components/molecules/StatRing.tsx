@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import type { OccupancyStatus } from '../../data/mockData'
+import type { OccupancyStatus } from '../../lib/occupancy'
 
 interface StatRingProps {
   percent: number
