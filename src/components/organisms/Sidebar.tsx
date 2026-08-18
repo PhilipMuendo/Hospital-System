@@ -45,6 +45,7 @@ const roleLabel: Record<string, string> = {
   PHYSICIAN: 'Physician',
   NURSE: 'Nurse',
   BILLING: 'Billing',
+  PHARMACIST: 'Pharmacist',
 }
 
 function initialsOf(name: string) {

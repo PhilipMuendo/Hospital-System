@@ -10,6 +10,8 @@ import { TabBar } from '../molecules/TabBar'
 import { TableRow } from '../molecules/TableRow'
 import { Dropdown } from '../molecules/Dropdown'
 import { HeartbeatLine } from '../molecules/HeartbeatLine'
+import { MpesaCharge } from '../molecules/MpesaCharge'
+import { MedicationsTab } from './MedicationsTab'
 import { api } from '../../lib/apiClient'
 import { useAuth } from '../../context/AuthContext'
 import { calculateAge, formatDate, formatDateTime, formatKES } from '../../lib/format'
@@ -23,7 +25,7 @@ import type {
   VitalReading,
 } from '../../lib/types'
 
-const TABS = ['Summary', 'Labs', 'Imaging', 'Billing']
+const TABS = ['Summary', 'Labs', 'Imaging', 'Meds', 'Billing']
 
 const flagColor: Record<string, string> = {
   NORMAL: 'var(--color-status-healthy)',
@@ -38,6 +40,12 @@ const billingStatusLabel: Record<BillingStatus, 'healthy' | 'warning' | 'critica
 }
 
 const billingStatusOptions: BillingStatus[] = ['PAID', 'PENDING', 'DENIED']
+
+const sexLabel: Record<string, string> = {
+  MALE: 'Male',
+  FEMALE: 'Female',
+  INTERSEX: 'Intersex',
+}
 
 const payerLabel: Record<string, string> = {
   SHA: 'SHA',
@@ -236,13 +244,14 @@ export function PatientRecordSplitView() {
         {patient && (
           <div className="flex flex-col gap-3 border-t border-white/6 pt-5 text-[13px]">
             <Field label="Date of Birth" value={formatDate(patient.dob)} />
-            <Field label="Age / Sex" value={`${calculateAge(patient.dob)} · ${patient.sex === 'MALE' ? 'Male' : 'Female'}`} />
+            <Field label="Age / Sex" value={`${calculateAge(patient.dob)} · ${sexLabel[patient.sex]}`} />
             <Field label="Blood Type" value={patient.bloodType} />
             <Field label="National ID" value={patient.nationalId ?? '—'} />
             <Field label="Admitted" value={formatDateTime(patient.admittedAt)} />
             <Field label="Physician" value={patient.primaryPhysician.name} />
             <Field label="Allergies" value={patient.allergies.length > 0 ? patient.allergies.join(', ') : 'None known'} />
             <Field label="Next of Kin" value={`${patient.nextOfKinName} (${patient.nextOfKinRelation})`} />
+            <Field label="Mobile" value={patient.phone ?? '—'} />
             <Field label="Next of Kin Phone" value={patient.nextOfKinPhone} />
           </div>
         )}
@@ -272,6 +281,8 @@ export function PatientRecordSplitView() {
               transition={{ duration: 0.32, ease: [0.22, 1.12, 0.4, 1] }}
             >
               {tab === 'Summary' && <SummaryTab patient={patient} loading={patientQuery.isLoading} />}
+
+              {tab === 'Meds' && <MedicationsTab patientId={selectedPatientId} />}
 
               {tab === 'Labs' && (
                 <div className="flex flex-col">
@@ -352,6 +363,17 @@ export function PatientRecordSplitView() {
                             {payerLabel[b.payer]}
                             {b.mpesaReference ? ` · M-Pesa ${b.mpesaReference}` : ''}
                           </p>
+                          {canEditBilling && (
+                            <MpesaCharge
+                              line={b}
+                              patientPhone={patient?.phone ?? null}
+                              onSettled={() =>
+                                queryClient.invalidateQueries({
+                                  queryKey: ['patient', selectedPatientId, 'billing'],
+                                })
+                              }
+                            />
+                          )}
                         </div>
                         <span className="font-mono text-[12.5px] tabular text-mist-500">{b.code}</span>
                         <span className="font-mono text-[13px] tabular text-mist-100">{formatKES(b.amount)}</span>

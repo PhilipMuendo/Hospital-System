@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'PHYSICIAN' | 'NURSE' | 'BILLING'
+export type Role = 'ADMIN' | 'PHYSICIAN' | 'NURSE' | 'BILLING' | 'PHARMACIST'
 
 export interface AuthUser {
   id: string
@@ -30,7 +30,8 @@ export interface PatientDetail {
   nationalId: string | null
   name: string
   dob: string
-  sex: 'MALE' | 'FEMALE'
+  phone: string | null
+  sex: 'MALE' | 'FEMALE' | 'INTERSEX'
   bloodType: string
   nextOfKinName: string
   nextOfKinPhone: string
@@ -124,4 +125,96 @@ export interface DashboardMetric {
   value: string
   delta: string
   trend: 'up' | 'down' | 'flat'
+}
+
+export type DrugForm =
+  | 'TABLET'
+  | 'CAPSULE'
+  | 'SYRUP'
+  | 'SUSPENSION'
+  | 'INJECTION'
+  | 'INFUSION'
+  | 'SUPPOSITORY'
+  | 'TOPICAL'
+  | 'INHALER'
+  | 'DROPS'
+
+export interface Drug {
+  id: string
+  code: string
+  genericName: string
+  brandName: string | null
+  form: DrugForm
+  strength: string
+  unit: string
+  unitPrice: string
+  kemlListed: boolean
+  controlled: boolean
+}
+
+export interface DrugStockRow extends Drug {
+  currency: string
+  reorderLevel: number
+  inStock: number
+  belowReorderLevel: boolean
+  expiringSoon: number
+  expiredUnits: number
+  earliestExpiry: string | null
+}
+
+export interface DispenseEvent {
+  id: string
+  quantity: number
+  createdAt: string
+  dispensedBy: { id: string; name: string }
+  batchBreakdown: { batchId: string; batchNumber: string; expiryDate: string; quantity: number }[]
+}
+
+export interface PrescriptionItem {
+  id: string
+  dose: string
+  route: string
+  frequency: string
+  durationDays: number | null
+  quantityPrescribed: number
+  quantityDispensed: number
+  quantityRemaining: number
+  instructions: string | null
+  drug: Drug
+  dispenseEvents: DispenseEvent[]
+}
+
+export type PrescriptionStatus = 'ACTIVE' | 'PARTIALLY_DISPENSED' | 'DISPENSED' | 'CANCELLED'
+
+export interface Prescription {
+  id: string
+  status: PrescriptionStatus
+  notes: string | null
+  allergyOverrideReason: string | null
+  createdAt: string
+  prescriber: { id: string; name: string }
+  items: PrescriptionItem[]
+}
+
+export type MpesaStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED' | 'TIMEOUT'
+
+export interface MpesaTransaction {
+  id: string
+  /** Masked by the server — full number never reaches the browser. */
+  phone: string
+  amount: string
+  status: MpesaStatus
+  resultDesc: string | null
+  mpesaReceiptNumber: string | null
+  transactionDate: string | null
+  billingLineId: string | null
+  createdAt: string
+}
+
+export interface MpesaPushResponse {
+  id: string
+  status: MpesaStatus
+  checkoutRequestId: string | null
+  customerMessage: string
+  mocked: boolean
 }

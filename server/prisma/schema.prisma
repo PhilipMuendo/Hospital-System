@@ -12,11 +12,13 @@ enum Role {
   PHYSICIAN
   NURSE
   BILLING
+  PHARMACIST
 }
 
 enum Sex {
   MALE
   FEMALE
+  INTERSEX
 }
 
 enum CodeStatus {
@@ -69,6 +71,60 @@ enum SurgeryStatus {
   CANCELLED
 }
 
+// --- Audit (Kenya Data Protection Act 2019 — processing & access log) ---
+
+enum AuditAction {
+  LOGIN
+  LOGIN_FAILED
+  LOGOUT
+  READ
+  CREATE
+  UPDATE
+  DELETE
+  EXPORT
+  DENIED
+}
+
+// --- M-Pesa (Safaricom Daraja) ---
+
+enum MpesaStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+  TIMEOUT
+}
+
+// --- Pharmacy ---
+
+enum DrugForm {
+  TABLET
+  CAPSULE
+  SYRUP
+  SUSPENSION
+  INJECTION
+  INFUSION
+  SUPPOSITORY
+  TOPICAL
+  INHALER
+  DROPS
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  PARTIALLY_DISPENSED
+  DISPENSED
+  CANCELLED
+}
+
+enum StockMovementType {
+  RECEIPT
+  DISPENSE
+  ADJUSTMENT
+  EXPIRY_WRITE_OFF
+  RETURN
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -83,6 +139,12 @@ model User {
   billingLinesCreated BillingLine[] @relation("BillingCreatedBy")
   labsReviewed        LabResult[]   @relation("LabReviewedBy")
   alertsResolved      Alert[]       @relation("AlertResolvedBy")
+
+  auditLogs            AuditLog[]         @relation("AuditActor")
+  prescriptionsWritten Prescription[]     @relation("Prescriber")
+  dispensesMade        DispenseEvent[]    @relation("DispensedBy")
+  stockMovementsMade   StockMovement[]    @relation("StockMovementBy")
+  mpesaInitiated       MpesaTransaction[] @relation("MpesaInitiatedBy")
 }
 
 model Ward {
@@ -102,6 +164,7 @@ model Patient {
   dob               DateTime
   sex               Sex
   bloodType         String
+  phone             String?
   nextOfKinName     String
   nextOfKinPhone    String
   nextOfKinRelation String
@@ -123,11 +186,14 @@ model Patient {
   admittedAt   DateTime      @default(now())
   dischargedAt DateTime?
 
-  vitals       VitalReading[]
-  labs         LabResult[]
-  imaging      ImagingStudy[]
-  billingLines BillingLine[]
-  surgeries    Surgery[]
+  vitals            VitalReading[]
+  labs              LabResult[]
+  imaging           ImagingStudy[]
+  billingLines      BillingLine[]
+  surgeries         Surgery[]
+  prescriptions     Prescription[]
+  mpesaTransactions MpesaTransaction[]
+  auditLogs         AuditLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -192,6 +258,9 @@ model BillingLine {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
+  mpesaTransactions MpesaTransaction[]
+  dispenseEvent     DispenseEvent?
+
   @@index([patientId])
   @@index([status])
 }
@@ -235,4 +304,259 @@ model HospitalMetric {
   value String
   delta String
   trend String
+}
+
+// ---------------------------------------------------------------------------
+// Audit trail
+// ---------------------------------------------------------------------------
+
+// Append-only. Every authenticated mutation and every read of patient-level
+// PHI lands here, so the facility can answer "who looked at this chart, and
+// when" — a standing requirement under the Data Protection Act 2019 and the
+// Health Act 2017 confidentiality provisions. Rows are never updated or
+// deleted by application code.
+model AuditLog {
+  id String @id @default(cuid())
+
+  actorId   String?
+  actor     User?   @relation("AuditActor", fields: [actorId], references: [id])
+  actorRole Role?
+  // Retained verbatim so the log still reads correctly after a user is renamed
+  // or deactivated.
+  actorLabel String
+
+  action AuditAction
+  entity String
+  entityId String?
+
+  // Denormalised so a subject-access request ("show me everyone who touched
+  // this patient") is one indexed query rather than a scan over meta.
+  patientId String?
+  patient   Patient? @relation(fields: [patientId], references: [id])
+
+  method String?
+  path   String
+  status Int?
+
+  ip        String?
+  userAgent String?
+
+  // Field-level before/after for mutations; query shape for reads. Never
+  // holds credentials — the writer strips them.
+  meta Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([patientId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([entity, entityId])
+  @@index([action, createdAt])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// M-Pesa — Safaricom Daraja Lipa na M-Pesa Online (STK Push)
+// ---------------------------------------------------------------------------
+
+model MpesaTransaction {
+  id String @id @default(cuid())
+
+  billingLineId String?
+  billingLine   BillingLine? @relation(fields: [billingLineId], references: [id], onDelete: SetNull)
+
+  patientId String?
+  patient   Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+
+  // Normalised to 2547XXXXXXXX / 2541XXXXXXXX before it leaves the server.
+  phone            String
+  // Daraja rejects fractional amounts on the paybill product, so this is whole
+  // shillings even though BillingLine.amount carries cents.
+  amount           Decimal @db.Decimal(10, 2)
+  accountReference String
+  description      String
+
+  merchantRequestId String?
+  checkoutRequestId String? @unique
+
+  status     MpesaStatus @default(PENDING)
+  resultCode String?
+  resultDesc String?
+
+  mpesaReceiptNumber String?
+  transactionDate    DateTime?
+
+  // Whole Daraja envelopes, kept for reconciliation against the Safaricom
+  // statement and for dispute resolution.
+  requestPayload  Json?
+  callbackPayload Json?
+
+  initiatedById String?
+  initiatedBy   User?   @relation("MpesaInitiatedBy", fields: [initiatedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([billingLineId])
+  @@index([patientId])
+  @@index([status, createdAt])
+  @@index([mpesaReceiptNumber])
+}
+
+// ---------------------------------------------------------------------------
+// Pharmacy — formulary, batch stock, prescribing, dispensing
+// ---------------------------------------------------------------------------
+
+model Drug {
+  id String @id @default(cuid())
+
+  // Facility formulary code, e.g. "PHARM-118".
+  code         String   @unique
+  genericName  String
+  brandName    String?
+  form         DrugForm
+  strength     String
+  unit         String   @default("unit")
+
+  // KEML = Kenya Essential Medicines List. Flagged because SHA benefit rules
+  // and county stock-out reporting both key off it.
+  kemlListed   Boolean @default(false)
+  controlled   Boolean @default(false)
+
+  unitPrice Decimal @db.Decimal(10, 2)
+  currency  String  @default("KES")
+
+  reorderLevel Int     @default(0)
+  active       Boolean @default(true)
+
+  batches           DrugBatch[]
+  prescriptionItems PrescriptionItem[]
+  stockMovements    StockMovement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([genericName])
+  @@index([active])
+}
+
+model DrugBatch {
+  id String @id @default(cuid())
+
+  drugId String
+  drug   Drug   @relation(fields: [drugId], references: [id], onDelete: Cascade)
+
+  batchNumber String
+  expiryDate  DateTime
+  // Decremented under a transaction on dispense; never allowed below zero.
+  quantity    Int
+  supplier    String?
+  receivedAt  DateTime @default(now())
+
+  stockMovements StockMovement[]
+
+  @@unique([drugId, batchNumber])
+  @@index([drugId, expiryDate])
+}
+
+model StockMovement {
+  id String @id @default(cuid())
+
+  drugId String
+  drug   Drug   @relation(fields: [drugId], references: [id], onDelete: Cascade)
+
+  batchId String?
+  batch   DrugBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  type StockMovementType
+  // Signed: negative for dispense and write-off, positive for receipt.
+  quantity Int
+  // Batch quantity after this movement, so the ledger can be replayed and
+  // reconciled without recomputing from every prior row.
+  balanceAfter Int?
+
+  reason String?
+
+  performedById String?
+  performedBy   User?   @relation("StockMovementBy", fields: [performedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([drugId, createdAt])
+  @@index([batchId])
+  @@index([type, createdAt])
+}
+
+model Prescription {
+  id String @id @default(cuid())
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  prescriberId String
+  prescriber   User   @relation("Prescriber", fields: [prescriberId], references: [id])
+
+  status PrescriptionStatus @default(ACTIVE)
+  notes  String?
+
+  // Set when the prescriber overrode a recorded allergy match; the reason is
+  // required by the API and is what the audit log points at.
+  allergyOverrideReason String?
+
+  items PrescriptionItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId, createdAt])
+  @@index([status])
+}
+
+model PrescriptionItem {
+  id String @id @default(cuid())
+
+  prescriptionId String
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  drugId String
+  drug   Drug   @relation(fields: [drugId], references: [id])
+
+  dose      String
+  route     String
+  frequency String
+  durationDays Int?
+
+  quantityPrescribed Int
+  quantityDispensed  Int @default(0)
+
+  instructions String?
+
+  dispenseEvents DispenseEvent[]
+
+  @@index([prescriptionId])
+  @@index([drugId])
+}
+
+model DispenseEvent {
+  id String @id @default(cuid())
+
+  prescriptionItemId String
+  prescriptionItem   PrescriptionItem @relation(fields: [prescriptionItemId], references: [id], onDelete: Cascade)
+
+  // Which batches were drawn down, in FEFO order.
+  batchBreakdown Json
+
+  quantity Int
+
+  dispensedById String
+  dispensedBy   User   @relation("DispensedBy", fields: [dispensedById], references: [id])
+
+  // The charge raised for this dispense. One-to-one: re-dispensing creates a
+  // new event and a new line rather than mutating the old charge.
+  billingLineId String?      @unique
+  billingLine   BillingLine? @relation(fields: [billingLineId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([prescriptionItemId])
+  @@index([createdAt])
 }

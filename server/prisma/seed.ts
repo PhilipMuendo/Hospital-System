@@ -63,6 +63,14 @@ function generatedPhone(seed: number) {
 async function main() {
   console.log('Clearing existing data...')
   await prisma.$transaction([
+    prisma.auditLog.deleteMany(),
+    prisma.mpesaTransaction.deleteMany(),
+    prisma.dispenseEvent.deleteMany(),
+    prisma.prescriptionItem.deleteMany(),
+    prisma.prescription.deleteMany(),
+    prisma.stockMovement.deleteMany(),
+    prisma.drugBatch.deleteMany(),
+    prisma.drug.deleteMany(),
     prisma.billingLine.deleteMany(),
     prisma.surgery.deleteMany(),
     prisma.imagingStudy.deleteMany(),
@@ -102,6 +110,7 @@ async function main() {
   const nurseAchieng = await createUser('Achieng Otieno', 'achieng.otieno@uzimageneral.ke', 'NURSE')
   const nurseChebet = await createUser('Chebet Kiptoo', 'chebet.kiptoo@uzimageneral.ke', 'NURSE')
   const billingBrenda = await createUser('Brenda Nyambura', 'b.nyambura@uzimageneral.ke', 'BILLING')
+  const pharmJoseph = await createUser('Joseph Kariuki', 'j.kariuki@uzimageneral.ke', 'PHARMACIST')
   const physicians = [drNjeri, drKiptoo, drWafula, drAbdi]
 
   console.log('Seeding richly-detailed patients...')
@@ -116,6 +125,7 @@ async function main() {
       dob: birthDate(68),
       sex: 'FEMALE',
       bloodType: 'O Negative',
+      phone: '+254 722 118 904',
       nextOfKinName: 'David Mwangi',
       nextOfKinPhone: '+254 722 445 810',
       nextOfKinRelation: 'Son',
@@ -175,11 +185,11 @@ async function main() {
   })
 
   // 2. Peter Otieno Onyango — General Ward — post-appendectomy recovery
-  await prisma.patient.create({
+  const peter = await prisma.patient.create({
     data: {
       ipNumber: 'IP/2026/04512', nationalId: '27650312', name: 'Peter Otieno Onyango',
       dob: birthDate(54), sex: 'MALE', bloodType: 'A Positive',
-      nextOfKinName: 'Mary Onyango', nextOfKinPhone: '+254 733 118 402', nextOfKinRelation: 'Spouse',
+      nextOfKinName: 'Mary Onyango', phone: '+254 701 445 220', nextOfKinPhone: '+254 733 118 402', nextOfKinRelation: 'Spouse',
       allergies: [], codeStatus: 'FULL_CODE',
       chiefComplaint: 'Post-operative day 2 following laparoscopic appendectomy, low-grade fever overnight.',
       assessment: 'Uncomplicated post-appendectomy recovery; mild surgical site inflammation, afebrile since this morning.',
@@ -209,11 +219,11 @@ async function main() {
   })
 
   // 3. Amina Hassan Ali — Maternity Ward — pre-eclampsia monitoring
-  await prisma.patient.create({
+  const amina = await prisma.patient.create({
     data: {
       ipNumber: 'IP/2026/04530', nationalId: '31029487', name: 'Amina Hassan Ali',
       dob: birthDate(31), sex: 'FEMALE', bloodType: 'B Positive',
-      nextOfKinName: 'Yusuf Ali', nextOfKinPhone: '+254 711 902 337', nextOfKinRelation: 'Spouse',
+      nextOfKinName: 'Yusuf Ali', phone: '+254 729 663 118', nextOfKinPhone: '+254 711 902 337', nextOfKinRelation: 'Spouse',
       allergies: ['Sulfa drugs'], codeStatus: 'FULL_CODE',
       chiefComplaint: '38 weeks gestation, admitted for pre-eclampsia monitoring after elevated BP at antenatal visit.',
       assessment: 'Mild pre-eclampsia; blood pressure trending down on labetalol, foetal monitoring reassuring.',
@@ -247,7 +257,7 @@ async function main() {
     data: {
       ipNumber: 'IP/2026/04498', nationalId: '29871034', name: 'Kiptoo Chebet Langat',
       dob: birthDate(45), sex: 'MALE', bloodType: 'O Positive',
-      nextOfKinName: 'Rebecca Langat', nextOfKinPhone: '+254 720 556 981', nextOfKinRelation: 'Spouse',
+      nextOfKinName: 'Rebecca Langat', phone: '+254 714 208 553', nextOfKinPhone: '+254 720 556 981', nextOfKinRelation: 'Spouse',
       allergies: [], codeStatus: 'FULL_CODE',
       chiefComplaint: 'Closed head injury following a road traffic accident, brief loss of consciousness at scene.',
       assessment: 'GCS improved from 13 to 15 over 24 hours; CT head shows no acute intracranial haemorrhage. Neuro observations stable.',
@@ -280,7 +290,7 @@ async function main() {
     data: {
       ipNumber: 'IP/2026/04555', nationalId: '19340221', name: 'Njoroge Mwangi Kamau',
       dob: birthDate(60), sex: 'MALE', bloodType: 'A Negative',
-      nextOfKinName: 'Wanjiku Kamau', nextOfKinPhone: '+254 715 224 660', nextOfKinRelation: 'Spouse',
+      nextOfKinName: 'Wanjiku Kamau', phone: '+254 738 991 407', nextOfKinPhone: '+254 715 224 660', nextOfKinRelation: 'Spouse',
       allergies: ['Aspirin'], codeStatus: 'FULL_CODE',
       chiefComplaint: 'Sudden-onset central chest pain radiating to the left arm, 2 hours prior to arrival.',
       assessment: 'Serial troponins negative, ECG without ST changes; low-risk chest pain, likely musculoskeletal but observing per protocol.',
@@ -308,11 +318,11 @@ async function main() {
   })
 
   // 6. Akinyi Odera Achieng — General Ward — malaria
-  await prisma.patient.create({
+  const akinyi = await prisma.patient.create({
     data: {
       ipNumber: 'IP/2026/04561', nationalId: '35120876', name: 'Akinyi Odera Achieng',
       dob: birthDate(29), sex: 'FEMALE', bloodType: 'O Positive',
-      nextOfKinName: 'Brian Odera', nextOfKinPhone: '+254 708 337 129', nextOfKinRelation: 'Sibling',
+      nextOfKinName: 'Brian Odera', phone: '+254 706 552 813', nextOfKinPhone: '+254 708 337 129', nextOfKinRelation: 'Sibling',
       allergies: [], codeStatus: 'FULL_CODE',
       chiefComplaint: 'Three days of fever, chills, and headache; positive malaria rapid diagnostic test at triage.',
       assessment: 'Uncomplicated P. falciparum malaria, responding well to IV artesunate, afebrile for 12 hours.',
@@ -343,7 +353,7 @@ async function main() {
     data: {
       ipNumber: 'IP/2026/04570', nationalId: null, name: 'Fatuma Ali Mohamed',
       dob: birthDate(8), sex: 'FEMALE', bloodType: 'AB Positive',
-      nextOfKinName: 'Khadija Mohamed', nextOfKinPhone: '+254 726 884 213', nextOfKinRelation: 'Parent',
+      nextOfKinName: 'Khadija Mohamed', phone: '+254 745 330 671', nextOfKinPhone: '+254 726 884 213', nextOfKinRelation: 'Parent',
       allergies: ['Dust mites'], codeStatus: 'FULL_CODE',
       chiefComplaint: 'Acute wheeze and shortness of breath, known asthmatic, poor response to home inhaler.',
       assessment: 'Moderate asthma exacerbation, improving with nebulised salbutamol and oral steroids.',
@@ -373,7 +383,7 @@ async function main() {
     data: {
       ipNumber: 'IP/2026/04580', nationalId: '15602398', name: 'Mutua Musyoka Kioko',
       dob: birthDate(72), sex: 'MALE', bloodType: 'B Negative',
-      nextOfKinName: 'Grace Musyoka', nextOfKinPhone: '+254 733 774 502', nextOfKinRelation: 'Spouse',
+      nextOfKinName: 'Grace Musyoka', phone: '+254 799 104 288', nextOfKinPhone: '+254 733 774 502', nextOfKinRelation: 'Spouse',
       allergies: ['Iodine contrast'], codeStatus: 'FULL_CODE',
       chiefComplaint: 'Post-operative day 3 following coronary artery bypass grafting, routine recovery.',
       assessment: 'Stable post-CABG course; sternal wound clean, chest tube removed yesterday, mobilising with physiotherapy.',
@@ -427,6 +437,7 @@ async function main() {
           sex,
           bloodType: BLOOD_TYPES[genIndex % BLOOD_TYPES.length],
           nextOfKinName: nok.name,
+          phone: generatedPhone(genIndex + 900),
           nextOfKinPhone: generatedPhone(genIndex),
           nextOfKinRelation: RELATIONS[genIndex % RELATIONS.length],
           avatarInitials: `${person.first[0]}${person.surname[0]}`,
@@ -459,7 +470,7 @@ async function main() {
         ipNumber: d.ip, name: d.name, dob: birthDate(d.age), sex: d.sex,
         bloodType: BLOOD_TYPES[i % BLOOD_TYPES.length],
         nextOfKinName: generatedPerson(200 + i, d.sex === 'MALE' ? 'FEMALE' : 'MALE').name,
-        nextOfKinPhone: generatedPhone(200 + i), nextOfKinRelation: RELATIONS[i % RELATIONS.length],
+        phone: generatedPhone(500 + i), nextOfKinPhone: generatedPhone(200 + i), nextOfKinRelation: RELATIONS[i % RELATIONS.length],
         avatarInitials: initials, wardId: wards.get('General Ward')!.id, bed: `Pre-op ${i + 1}`,
         primaryPhysicianId: physicians[i % physicians.length].id, admittedAt: daysAgo(1),
       },
@@ -493,6 +504,159 @@ async function main() {
     },
   })
 
+  console.log('Seeding pharmacy formulary...')
+  // Indicative Nairobi private-hospital unit prices, in KES. kemlListed marks
+  // the Kenya Essential Medicines List, which is what SHA benefit rules and
+  // county stock-out returns key off.
+  const drugDefs = [
+    { code: 'PHARM-118', genericName: 'Furosemide', brandName: 'Lasix', form: 'INJECTION' as const, strength: '20mg/2ml', unit: 'ampoule', kemlListed: true, unitPrice: 850, reorderLevel: 40 },
+    { code: 'PHARM-076', genericName: 'Ceftriaxone', brandName: 'Rocephin', form: 'INJECTION' as const, strength: '1g', unit: 'vial', kemlListed: true, unitPrice: 640, reorderLevel: 60 },
+    { code: 'PHARM-093', genericName: 'Artesunate', form: 'INJECTION' as const, strength: '60mg', unit: 'vial', kemlListed: true, unitPrice: 1300, reorderLevel: 30 },
+    { code: 'PHARM-027', genericName: 'Salbutamol', brandName: 'Ventolin', form: 'INHALER' as const, strength: '100mcg', unit: 'inhaler', kemlListed: true, unitPrice: 950, reorderLevel: 25 },
+    { code: 'PHARM-004', genericName: 'Paracetamol', form: 'TABLET' as const, strength: '500mg', unit: 'tablet', kemlListed: true, unitPrice: 12, reorderLevel: 500 },
+    { code: 'PHARM-011', genericName: 'Amoxicillin', form: 'CAPSULE' as const, strength: '500mg', unit: 'capsule', kemlListed: true, unitPrice: 28, reorderLevel: 300 },
+    { code: 'PHARM-052', genericName: 'Enalapril', form: 'TABLET' as const, strength: '5mg', unit: 'tablet', kemlListed: true, unitPrice: 22, reorderLevel: 200 },
+    { code: 'PHARM-061', genericName: 'Metformin', form: 'TABLET' as const, strength: '500mg', unit: 'tablet', kemlListed: true, unitPrice: 15, reorderLevel: 400 },
+    { code: 'PHARM-088', genericName: 'Nifedipine', form: 'TABLET' as const, strength: '20mg', unit: 'tablet', kemlListed: true, unitPrice: 30, reorderLevel: 150 },
+    { code: 'PHARM-090', genericName: 'Magnesium Sulphate', form: 'INJECTION' as const, strength: '5g/10ml', unit: 'ampoule', kemlListed: true, unitPrice: 480, reorderLevel: 20 },
+    { code: 'PHARM-102', genericName: 'Morphine Sulphate', form: 'INJECTION' as const, strength: '10mg/ml', unit: 'ampoule', kemlListed: true, controlled: true, unitPrice: 720, reorderLevel: 15 },
+    { code: 'PHARM-131', genericName: 'Artemether/Lumefantrine', brandName: 'Coartem', form: 'TABLET' as const, strength: '20/120mg', unit: 'tablet', kemlListed: true, unitPrice: 45, reorderLevel: 240 },
+    { code: 'PHARM-140', genericName: 'Omeprazole', form: 'CAPSULE' as const, strength: '20mg', unit: 'capsule', kemlListed: true, unitPrice: 35, reorderLevel: 200 },
+    { code: 'PHARM-155', genericName: 'Benzylpenicillin', form: 'INJECTION' as const, strength: '1MU', unit: 'vial', kemlListed: true, unitPrice: 210, reorderLevel: 50 },
+  ]
+
+  const drugs = new Map<string, string>()
+  for (const d of drugDefs) {
+    const created = await prisma.drug.create({ data: { ...d, controlled: d.controlled ?? false } })
+    drugs.set(d.code, created.id)
+  }
+
+  console.log('Seeding drug batches...')
+  function inMonths(months: number) {
+    const d = new Date()
+    d.setMonth(d.getMonth() + months)
+    return d
+  }
+
+  // Most lines carry two batches with different expiries so FEFO allocation
+  // has something real to choose between. Salbutamol is deliberately seeded
+  // below its reorder level and Magnesium Sulphate short-dated, so the
+  // low-stock and expiring-soon views are not empty on a fresh install.
+  const batchDefs = [
+    { code: 'PHARM-118', batchNumber: 'FUR-2411A', months: 5, quantity: 120, supplier: 'Surgipharm' },
+    { code: 'PHARM-118', batchNumber: 'FUR-2503B', months: 14, quantity: 200, supplier: 'Surgipharm' },
+    { code: 'PHARM-076', batchNumber: 'CEF-2412C', months: 8, quantity: 180, supplier: 'Laborex Kenya' },
+    { code: 'PHARM-076', batchNumber: 'CEF-2601D', months: 20, quantity: 240, supplier: 'Laborex Kenya' },
+    { code: 'PHARM-093', batchNumber: 'ART-2502E', months: 11, quantity: 90, supplier: 'KEMSA' },
+    { code: 'PHARM-027', batchNumber: 'SAL-2410F', months: 4, quantity: 18, supplier: 'Phillips Pharmaceuticals' },
+    { code: 'PHARM-004', batchNumber: 'PCM-2505G', months: 22, quantity: 4200, supplier: 'Cosmos Pharmaceuticals' },
+    { code: 'PHARM-011', batchNumber: 'AMX-2504H', months: 16, quantity: 1600, supplier: 'Cosmos Pharmaceuticals' },
+    { code: 'PHARM-052', batchNumber: 'ENA-2506J', months: 19, quantity: 900, supplier: 'Surgipharm' },
+    { code: 'PHARM-061', batchNumber: 'MET-2507K', months: 24, quantity: 2400, supplier: 'Cosmos Pharmaceuticals' },
+    { code: 'PHARM-088', batchNumber: 'NIF-2503L', months: 13, quantity: 640, supplier: 'Laborex Kenya' },
+    { code: 'PHARM-090', batchNumber: 'MGS-2409M', months: 2, quantity: 46, supplier: 'KEMSA' },
+    { code: 'PHARM-102', batchNumber: 'MOR-2505N', months: 17, quantity: 60, supplier: 'KEMSA' },
+    { code: 'PHARM-131', batchNumber: 'COA-2502P', months: 9, quantity: 720, supplier: 'KEMSA' },
+    { code: 'PHARM-131', batchNumber: 'COA-2508Q', months: 21, quantity: 960, supplier: 'KEMSA' },
+    { code: 'PHARM-140', batchNumber: 'OME-2506R', months: 18, quantity: 850, supplier: 'Surgipharm' },
+    { code: 'PHARM-155', batchNumber: 'BPN-2504S', months: 12, quantity: 140, supplier: 'Laborex Kenya' },
+  ]
+
+  for (const b of batchDefs) {
+    const drugId = drugs.get(b.code)!
+    const batch = await prisma.drugBatch.create({
+      data: {
+        drugId,
+        batchNumber: b.batchNumber,
+        expiryDate: inMonths(b.months),
+        quantity: b.quantity,
+        supplier: b.supplier,
+        receivedAt: daysAgo(30),
+      },
+    })
+    await prisma.stockMovement.create({
+      data: {
+        drugId,
+        batchId: batch.id,
+        type: 'RECEIPT',
+        quantity: b.quantity,
+        balanceAfter: b.quantity,
+        reason: `Opening stock - ${b.supplier}`,
+        performedById: pharmJoseph.id,
+        createdAt: daysAgo(30),
+      },
+    })
+  }
+
+  console.log('Seeding prescriptions...')
+
+  // Grace - Cardiac ICU, decompensated heart failure. Note her recorded
+  // penicillin allergy: prescribing Benzylpenicillin for her through the API
+  // is refused unless the prescriber supplies an override reason.
+  await prisma.prescription.create({
+    data: {
+      patientId: grace.id,
+      prescriberId: drNjeri.id,
+      status: 'PARTIALLY_DISPENSED',
+      notes: 'Diurese to euvolaemia; daily U/E while on IV furosemide.',
+      items: {
+        create: [
+          { drugId: drugs.get('PHARM-118')!, dose: '40mg', route: 'IV', frequency: 'BD', durationDays: 3, quantityPrescribed: 6, quantityDispensed: 4, instructions: 'Give slowly over 2 minutes.' },
+          { drugId: drugs.get('PHARM-052')!, dose: '5mg', route: 'PO', frequency: 'OD', durationDays: 14, quantityPrescribed: 14, quantityDispensed: 0 },
+        ],
+      },
+    },
+  })
+
+  // Amina - Maternity, pre-eclampsia.
+  await prisma.prescription.create({
+    data: {
+      patientId: amina.id,
+      prescriberId: drWafula.id,
+      status: 'ACTIVE',
+      notes: 'MgSO4 per eclampsia protocol; monitor reflexes and urine output hourly.',
+      items: {
+        create: [
+          { drugId: drugs.get('PHARM-090')!, dose: '4g loading', route: 'IV', frequency: 'STAT', quantityPrescribed: 2, quantityDispensed: 0 },
+          { drugId: drugs.get('PHARM-088')!, dose: '20mg', route: 'PO', frequency: 'TDS', durationDays: 5, quantityPrescribed: 15, quantityDispensed: 0 },
+        ],
+      },
+    },
+  })
+
+  // Akinyi - General Ward, malaria.
+  await prisma.prescription.create({
+    data: {
+      patientId: akinyi.id,
+      prescriberId: drAbdi.id,
+      status: 'ACTIVE',
+      notes: 'Step down to oral AL once tolerating fluids.',
+      items: {
+        create: [
+          { drugId: drugs.get('PHARM-093')!, dose: '120mg', route: 'IV', frequency: 'At 0, 12, 24h', quantityPrescribed: 3, quantityDispensed: 0 },
+          { drugId: drugs.get('PHARM-131')!, dose: '4 tabs', route: 'PO', frequency: 'BD', durationDays: 3, quantityPrescribed: 24, quantityDispensed: 0 },
+          { drugId: drugs.get('PHARM-004')!, dose: '1g', route: 'PO', frequency: 'QDS PRN', durationDays: 3, quantityPrescribed: 12, quantityDispensed: 0 },
+        ],
+      },
+    },
+  })
+
+  // Peter - General Ward, post-appendectomy.
+  await prisma.prescription.create({
+    data: {
+      patientId: peter.id,
+      prescriberId: drKiptoo.id,
+      status: 'ACTIVE',
+      notes: 'Analgesia ladder; discontinue IV antibiotics at 48h if afebrile.',
+      items: {
+        create: [
+          { drugId: drugs.get('PHARM-076')!, dose: '1g', route: 'IV', frequency: 'OD', durationDays: 3, quantityPrescribed: 3, quantityDispensed: 0 },
+          { drugId: drugs.get('PHARM-102')!, dose: '5mg', route: 'IM', frequency: 'PRN 6-hourly', quantityPrescribed: 4, quantityDispensed: 0, instructions: 'Controlled drug - record in the DDA register on issue.' },
+        ],
+      },
+    },
+  })
+
   console.log('Seeding hospital metrics...')
   await prisma.hospitalMetric.createMany({
     data: [
@@ -502,6 +666,7 @@ async function main() {
   })
 
   console.log('\nSeed complete.')
+  console.log('Pharmacy: 14 formulary lines, 17 batches, 4 live prescriptions.')
   console.log('Demo login — any staff email above with password: Passw0rd!')
   console.log(`Featured patient: ${grace.name} (${grace.ipNumber})`)
 }
