@@ -18,6 +18,7 @@ import { mpesaRoutes } from './routes/mpesa.routes.js'
 import { pharmacyRoutes } from './routes/pharmacy.routes.js'
 import { reportsRoutes } from './routes/reports.routes.js'
 import { devicesRoutes } from './routes/devices.routes.js'
+import { queueRoutes } from './routes/queue.routes.js'
 
 /**
  * Origins allowed to make credentialed requests. Reflecting an arbitrary
@@ -79,6 +80,7 @@ export function createApp() {
   app.use('/api', pharmacyRoutes)
   app.use('/api', reportsRoutes)
   app.use('/api', devicesRoutes)
+  app.use('/api', queueRoutes)
 
   app.use(errorHandler)
 

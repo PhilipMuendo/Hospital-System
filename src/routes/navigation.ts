@@ -15,6 +15,9 @@ export interface NavItem {
  */
 export const NAV_ITEMS: NavItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: 'ring' },
+  { to: '/reception', label: 'Reception', icon: 'desk', roles: ['ADMIN', 'NURSE', 'BILLING'] },
+  { to: '/triage', label: 'Triage', icon: 'triage', roles: ['ADMIN', 'NURSE', 'PHYSICIAN'] },
+  { to: '/consultation', label: 'Consulting', icon: 'stethoscope', roles: ['ADMIN', 'PHYSICIAN', 'NURSE'] },
   { to: '/patients', label: 'Patients', icon: 'pulse' },
   { to: '/scheduling', label: 'Scheduling', icon: 'timeline' },
   { to: '/pharmacy', label: 'Pharmacy', icon: 'pill' },

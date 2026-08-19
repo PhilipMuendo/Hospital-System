@@ -44,6 +44,27 @@ export function NavIcon({ name }: { name: string }) {
           <path d="M6.6 11.4 11.4 6.6" stroke="currentColor" strokeWidth="1.4" />
         </svg>
       )
+    case 'desk':
+      return (
+        <svg {...common}>
+          <path d="M2 7.5h14M3.5 7.5V14M14.5 7.5V14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          <path d="M4 7.5 6 4h6l2 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+        </svg>
+      )
+    case 'triage':
+      return (
+        <svg {...common}>
+          <path d="M9 2.5v13M2.5 9h13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      )
+    case 'stethoscope':
+      return (
+        <svg {...common}>
+          <path d="M4.5 2.5v4a3 3 0 0 0 6 0v-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          <path d="M7.5 9.4v2.1a3.6 3.6 0 0 0 7.2 0v-1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          <circle cx="14.7" cy="9" r="1.6" stroke="currentColor" strokeWidth="1.4" />
+        </svg>
+      )
     case 'ledger':
       return (
         <svg {...common}>

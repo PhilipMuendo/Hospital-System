@@ -29,6 +29,9 @@ enum CodeStatus {
 }
 
 enum PatientStatus {
+  // Known to the facility, not currently an inpatient. The default: most
+  // people who walk through the door are never admitted.
+  REGISTERED
   ADMITTED
   DISCHARGED
 }
@@ -159,7 +162,10 @@ model Ward {
 
 model Patient {
   id                String     @id @default(cuid())
-  ipNumber          String     @unique
+  // Issued once, on first ever contact with the facility.
+  opNumber          String?    @unique
+  // Issued only on admission, so null for everyone who is seen and goes home.
+  ipNumber          String?    @unique
   nationalId        String?    @unique
   name              String
   dob               DateTime
@@ -176,15 +182,16 @@ model Patient {
   carePlan          String[]   @default([])
   avatarInitials    String
 
-  wardId String
-  ward   Ward   @relation(fields: [wardId], references: [id])
-  bed    String
+  wardId String?
+  ward   Ward?   @relation(fields: [wardId], references: [id])
+  bed    String?
 
-  primaryPhysicianId String
-  primaryPhysician   User   @relation("PrimaryPhysician", fields: [primaryPhysicianId], references: [id])
+  primaryPhysicianId String?
+  primaryPhysician   User?   @relation("PrimaryPhysician", fields: [primaryPhysicianId], references: [id])
 
-  status       PatientStatus @default(ADMITTED)
-  admittedAt   DateTime      @default(now())
+  status       PatientStatus @default(REGISTERED)
+  registeredAt DateTime      @default(now())
+  admittedAt   DateTime?
   dischargedAt DateTime?
 
   vitals            VitalReading[]
@@ -195,6 +202,7 @@ model Patient {
   prescriptions     Prescription[]
   mpesaTransactions MpesaTransaction[]
   auditLogs         AuditLog[]
+  visits            Visit[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -709,4 +717,195 @@ model DeviceReading {
   @@index([deviceId, measuredAt])
   @@index([patientId, measuredAt])
   @@index([accepted, receivedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Outpatient visits and the queue
+// ---------------------------------------------------------------------------
+
+enum VisitType {
+  NEW
+  REVISIT
+  FOLLOW_UP
+  EMERGENCY
+}
+
+enum VisitStatus {
+  OPEN
+  COMPLETED
+  // The visit ended in an admission; the inpatient record takes over.
+  ADMITTED
+  // Left without being seen. Tracked deliberately: LWBS rate is the single
+  // most honest measure of whether the queue is working.
+  LWBS
+  CANCELLED
+}
+
+// South African Triage Scale, which is what Kenyan casualty units actually
+// use. Target times are the SATS standards and drive the queue order.
+enum TriageAcuity {
+  RED // immediate
+  ORANGE // < 10 minutes
+  YELLOW // < 60 minutes
+  GREEN // < 240 minutes
+  BLUE // dead on arrival
+}
+
+enum StationKind {
+  RECEPTION
+  TRIAGE
+  CASHIER
+  CONSULTATION
+  LAB
+  IMAGING
+  PHARMACY
+}
+
+enum TicketStatus {
+  WAITING
+  CALLED
+  IN_SERVICE
+  COMPLETED
+  // Called the maximum number of times without appearing.
+  NO_SHOW
+  CANCELLED
+}
+
+// A physical place a patient queues for: a reception desk, the triage room,
+// consultation room 3.
+model Station {
+  id String @id @default(cuid())
+
+  code String @unique
+  name String
+  kind StationKind
+  room String?
+
+  // Prefix on the printed token, e.g. "C" gives C-042. Kept short so it is
+  // readable across a waiting room.
+  tokenPrefix String
+
+  // Sensitive services (e.g. an HIV or TB clinic) never render a name on the
+  // public board, only the token.
+  privateClinic Boolean @default(false)
+
+  active Boolean @default(true)
+
+  tickets QueueTicket[]
+  visits  Visit[]
+
+  createdAt DateTime @default(now())
+
+  @@index([kind, active])
+}
+
+model Visit {
+  id String @id @default(cuid())
+
+  // Human-facing attendance number, e.g. OPD/2026/08/0042.
+  visitNumber String @unique
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  type   VisitType   @default(REVISIT)
+  status VisitStatus @default(OPEN)
+
+  chiefComplaint String?
+
+  payer     Payer   @default(SELF_PAY)
+  shaNumber String?
+
+  // Set at triage. Null means not yet triaged, which the queue treats as
+  // routine — never as "no priority".
+  acuity TriageAcuity?
+
+  // Where the patient is now, for the "where is my patient" question.
+  currentStationId String?
+  currentStation   Station? @relation(fields: [currentStationId], references: [id])
+
+  arrivedAt DateTime  @default(now())
+  closedAt  DateTime?
+
+  registeredById String?
+  outcome        String?
+
+  tickets QueueTicket[]
+  triage  TriageAssessment?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, arrivedAt])
+  @@index([patientId, arrivedAt])
+  @@index([currentStationId])
+}
+
+model QueueTicket {
+  id String @id @default(cuid())
+
+  visitId String
+  visit   Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  stationId String
+  station   Station @relation(fields: [stationId], references: [id])
+
+  // Sequence within this station for this service day, and the token shown to
+  // the patient. Both reset at midnight Nairobi.
+  number Int
+  token  String
+  // Stored as YYYY-MM-DD in Nairobi so "today" is a plain equality check and
+  // never drifts with the server's timezone.
+  serviceDate String
+
+  // Derived from acuity at issue time; lower is seen sooner. Stored rather
+  // than computed so the ordering is auditable after the fact.
+  priority Int @default(3)
+
+  status TicketStatus @default(WAITING)
+
+  issuedAt    DateTime  @default(now())
+  calledAt    DateTime?
+  servedAt    DateTime?
+  completedAt DateTime?
+
+  // A patient who does not appear is called again, not discarded. Three
+  // strikes before NO_SHOW.
+  callCount Int @default(0)
+
+  calledById String?
+  servedById String?
+  // Which desk or room to go to, shown on the board.
+  counter String?
+
+  @@unique([stationId, serviceDate, number])
+  @@index([stationId, status, priority, issuedAt])
+  @@index([serviceDate, status])
+  @@index([visitId])
+}
+
+model TriageAssessment {
+  id String @id @default(cuid())
+
+  visitId String @unique
+  visit   Visit  @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  acuity TriageAcuity
+
+  // Recorded here as well as on the chart, because the triage observation is
+  // the justification for the acuity and must not be edited later.
+  temperature   String?
+  pulse         String?
+  respiratory   String?
+  bloodPressure String?
+  spo2          String?
+  weightKg      String?
+  heightCm      String?
+
+  notes String?
+
+  performedById String
+  performedAt   DateTime @default(now())
+
+  @@index([acuity, performedAt])
 }

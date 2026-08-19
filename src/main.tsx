@@ -12,6 +12,10 @@ import { PharmacyPage } from './pages/PharmacyPage.tsx'
 import { BillingPage } from './pages/BillingPage.tsx'
 import { ReportsPage } from './pages/ReportsPage.tsx'
 import { DevicesPage } from './pages/DevicesPage.tsx'
+import { ReceptionPage } from './pages/ReceptionPage.tsx'
+import { TriagePage } from './pages/TriagePage.tsx'
+import { ConsultationPage } from './pages/ConsultationPage.tsx'
+import { DisplayBoardPage } from './pages/DisplayBoardPage.tsx'
 import { AuditPage } from './pages/AuditPage.tsx'
 import { RequireAuth } from './routes/RequireAuth.tsx'
 import { RequireRole } from './routes/RequireRole.tsx'
@@ -26,6 +30,8 @@ createRoot(document.getElementById('root')!).render(
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            {/* Public: this drives a television, there is nobody to log it in. */}
+            <Route path="/board" element={<DisplayBoardPage />} />
 
             <Route
               element={
@@ -36,6 +42,30 @@ createRoot(document.getElementById('root')!).render(
             >
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route
+                path="/reception"
+                element={
+                  <RequireRole roles={['ADMIN', 'NURSE', 'BILLING']}>
+                    <ReceptionPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/triage"
+                element={
+                  <RequireRole roles={['ADMIN', 'NURSE', 'PHYSICIAN']}>
+                    <TriagePage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/consultation"
+                element={
+                  <RequireRole roles={['ADMIN', 'PHYSICIAN', 'NURSE']}>
+                    <ConsultationPage />
+                  </RequireRole>
+                }
+              />
               <Route path="/patients" element={<PatientsPage />} />
               <Route path="/scheduling" element={<SchedulingPage />} />
               <Route path="/pharmacy" element={<PharmacyPage />} />

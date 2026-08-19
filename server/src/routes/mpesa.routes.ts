@@ -42,7 +42,7 @@ mpesaRoutes.post(
 
       const line = await prisma.billingLine.findUnique({
         where: { id: req.params.id },
-        include: { patient: { select: { id: true, name: true, ipNumber: true, phone: true } } },
+        include: { patient: { select: { id: true, name: true, ipNumber: true, opNumber: true, phone: true } } },
       })
       if (!line) throw new ApiError(404, 'Billing line not found')
       if (line.status === 'PAID') throw new ApiError(409, 'This line is already settled')
@@ -62,10 +62,13 @@ mpesaRoutes.post(
         throw new ApiError(400, 'Amount exceeds the outstanding balance on this line')
       }
 
+      // Outpatients have no IP number; the OP number identifies them instead.
+      const accountReference = line.patient.ipNumber ?? line.patient.opNumber ?? line.patient.id
+
       const pushed = await stkPush({
         phone,
         amount,
-        accountReference: line.patient.ipNumber,
+        accountReference,
         description: line.code,
       })
 
@@ -75,7 +78,7 @@ mpesaRoutes.post(
           patientId: line.patientId,
           phone,
           amount,
-          accountReference: line.patient.ipNumber,
+          accountReference,
           description: line.description,
           merchantRequestId: pushed.merchantRequestId,
           checkoutRequestId: pushed.checkoutRequestId,

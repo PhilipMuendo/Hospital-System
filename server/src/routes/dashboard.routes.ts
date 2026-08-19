@@ -15,7 +15,7 @@ dashboardRoutes.get('/dashboard/metrics', requireAuth, async (_req, res, next) =
       }),
       prisma.patient.findMany({
         where: { status: 'ADMITTED' },
-        select: { admittedAt: true },
+        select: { admittedAt: true, registeredAt: true },
       }),
       prisma.hospitalMetric.findMany(),
     ])
@@ -24,7 +24,7 @@ dashboardRoutes.get('/dashboard/metrics', requireAuth, async (_req, res, next) =
     const avgStayDays =
       admittedPatients.length === 0
         ? 0
-        : admittedPatients.reduce((sum, p) => sum + (now - p.admittedAt.getTime()), 0) /
+        : admittedPatients.reduce((sum, p) => sum + (now - (p.admittedAt ?? p.registeredAt).getTime()), 0) /
           admittedPatients.length /
           (1000 * 60 * 60 * 24)
 

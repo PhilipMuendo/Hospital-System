@@ -69,6 +69,10 @@ async function main() {
     prisma.prescriptionItem.deleteMany(),
     prisma.prescription.deleteMany(),
     prisma.stockMovement.deleteMany(),
+    prisma.queueTicket.deleteMany(),
+    prisma.triageAssessment.deleteMany(),
+    prisma.visit.deleteMany(),
+    prisma.station.deleteMany(),
     prisma.deviceReading.deleteMany(),
     prisma.deviceMessage.deleteMany(),
     prisma.device.deleteMany(),
@@ -659,6 +663,23 @@ async function main() {
       },
     },
   })
+
+  console.log('Seeding queue stations...')
+  const stationDefs = [
+    { code: 'REC-1', name: 'Reception Desk 1', kind: 'RECEPTION', tokenPrefix: 'R', room: 'Front Desk' },
+    { code: 'TRI-1', name: 'Triage', kind: 'TRIAGE', tokenPrefix: 'T', room: 'Triage Room' },
+    { code: 'CASH-1', name: 'Cashier', kind: 'CASHIER', tokenPrefix: 'B', room: 'Cash Office' },
+    { code: 'CONS-1', name: 'Consultation Room 1', kind: 'CONSULTATION', tokenPrefix: 'C', room: 'Room 1' },
+    { code: 'CONS-2', name: 'Consultation Room 2', kind: 'CONSULTATION', tokenPrefix: 'C', room: 'Room 2' },
+    { code: 'CONS-3', name: 'Consultation Room 3', kind: 'CONSULTATION', tokenPrefix: 'C', room: 'Room 3' },
+    // Renders as a bare token on the public board — the clinic name alone
+    // would disclose a diagnosis to everyone in the waiting room.
+    { code: 'CCC-1', name: 'Comprehensive Care Clinic', kind: 'CONSULTATION', tokenPrefix: 'P', room: 'Room 8', privateClinic: true },
+    { code: 'PHA-1', name: 'Pharmacy Window', kind: 'PHARMACY', tokenPrefix: 'D', room: 'Pharmacy' },
+  ]
+  for (const st of stationDefs) {
+    await prisma.station.create({ data: { ...st, kind: st.kind as never } })
+  }
 
   console.log('Seeding biomedical devices...')
   const days = (n: number) => new Date(Date.now() + n * 24 * 60 * 60 * 1000)

@@ -17,6 +17,16 @@ import {
 } from '../src/lib/mpesa.js'
 import { diff, redact } from '../src/lib/audit.js'
 import {
+  STARVATION_MINUTES,
+  effectivePriority,
+  formatToken,
+  isBreaching,
+  nextInQueue,
+  orderQueue,
+  priorityFor,
+  serviceDate,
+} from '../src/lib/queue.js'
+import {
   Hl7Message,
   MllpFramer,
   buildAck,
@@ -261,6 +271,79 @@ check('does not hoard unbounded junk from a misbehaving device', () => {
   assert.deepEqual(framer.push(Buffer.alloc(200, 0x41)), [])
   // Buffer was dropped, so a following good frame still parses.
   assert.deepEqual(framer.push(wrapMllp('ok')), ['ok'])
+})
+
+console.log('\nQueue ordering')
+
+const T0 = new Date('2026-08-19T09:00:00+03:00')
+const minsAgo = (n: number) => new Date(T0.getTime() - n * 60000)
+const tk = (id: string, priority: number, waitedMins: number, callCount = 0) => ({
+  id,
+  priority,
+  issuedAt: minsAgo(waitedMins),
+  status: 'WAITING',
+  callCount,
+})
+
+check('acuity beats arrival order', () => {
+  // The bank behaviour would seat "early" first; a hospital must not.
+  const q = orderQueue([tk('early', priorityFor('GREEN'), 30), tk('sick', priorityFor('ORANGE'), 1)], T0)
+  assert.equal(q[0].id, 'sick')
+})
+check('arrival order decides within the same acuity', () => {
+  const q = orderQueue([tk('later', 2, 5), tk('earlier', 2, 25)], T0)
+  assert.equal(q[0].id, 'earlier')
+})
+check('an untriaged patient is routine, never best-case', () => {
+  assert.equal(priorityFor(null), priorityFor('GREEN'))
+  assert.ok(priorityFor(null) > priorityFor('YELLOW'))
+})
+check('waiting promotes one band per starvation interval', () => {
+  assert.equal(effectivePriority(tk('a', 3, 0), T0), 3)
+  assert.equal(effectivePriority(tk('a', 3, STARVATION_MINUTES), T0), 2)
+  assert.equal(effectivePriority(tk('a', 3, STARVATION_MINUTES * 2), T0), 1)
+})
+check('waiting never promotes anyone into the RED band', () => {
+  // RED means physiologically critical, not "here a long time".
+  assert.equal(effectivePriority(tk('a', 3, STARVATION_MINUTES * 20), T0), 1)
+})
+check('a long-waiting routine patient overtakes a fresh urgent one', () => {
+  const q = orderQueue([tk('fresh-yellow', 2, 1), tk('stale-green', 3, 100)], T0)
+  assert.equal(q[0].id, 'stale-green')
+})
+check('but a critical arrival still pre-empts everyone', () => {
+  const q = orderQueue([tk('stale-green', 3, 600), tk('red', 0, 0)], T0)
+  assert.equal(q[0].id, 'red')
+})
+check('someone already called is re-called before an untouched peer', () => {
+  const q = orderQueue([tk('untouched', 2, 20), tk('stepped-out', 2, 10, 1)], T0)
+  assert.equal(q[0].id, 'stepped-out')
+})
+check('tickets not waiting are excluded from the queue', () => {
+  const done = { ...tk('done', 0, 5), status: 'COMPLETED' }
+  assert.equal(nextInQueue([done], T0), null)
+})
+check('an empty queue yields nobody rather than throwing', () => {
+  assert.equal(nextInQueue([], T0), null)
+})
+
+check('flags a patient past their SATS target', () => {
+  // ORANGE target is 10 minutes.
+  assert.equal(isBreaching({ issuedAt: minsAgo(5) }, 'ORANGE', T0), false)
+  assert.equal(isBreaching({ issuedAt: minsAgo(30) }, 'ORANGE', T0), true)
+  // GREEN has four hours before it breaches.
+  assert.equal(isBreaching({ issuedAt: minsAgo(30) }, 'GREEN', T0), false)
+  assert.equal(isBreaching({ issuedAt: minsAgo(600) }, null, T0), false)
+})
+
+check('service day is Nairobi-local, not UTC', () => {
+  // 22:30 UTC is already the next day in Nairobi.
+  assert.equal(serviceDate(new Date('2026-08-19T22:30:00Z')), '2026-08-20')
+  assert.equal(serviceDate(new Date('2026-08-19T05:00:00Z')), '2026-08-19')
+})
+check('pads tokens so they line up on the board', () => {
+  assert.equal(formatToken('C', 7), 'C-007')
+  assert.equal(formatToken('C', 142), 'C-142')
 })
 
 console.log(`\n${passed} checks passed.\n`)
