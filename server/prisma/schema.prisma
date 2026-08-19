@@ -154,6 +154,7 @@ model Ward {
 
   patients Patient[]
   alerts   Alert[]
+  devices  Device[]
 }
 
 model Patient {
@@ -559,4 +560,153 @@ model DispenseEvent {
 
   @@index([prescriptionItemId])
   @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Biomedical devices
+// ---------------------------------------------------------------------------
+
+enum DeviceKind {
+  PATIENT_MONITOR
+  INFUSION_PUMP
+  VENTILATOR
+  LAB_ANALYSER
+  ECG
+  ULTRASOUND
+  XRAY
+  DEFIBRILLATOR
+  PULSE_OXIMETER
+  WEIGHING_SCALE
+  BARCODE_SCANNER
+  THERMOMETER
+}
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+  MAINTENANCE
+  FAULT
+  RETIRED
+}
+
+// How readings physically reach us. Not cosmetic — it decides which ingest
+// path a device uses and what can be expected of it.
+enum DeviceTransport {
+  // HL7 v2 over MLLP/TCP. The workhorse for monitors and lab analysers.
+  HL7_MLLP
+  // Vendor pushes JSON to our REST endpoint with a device key.
+  REST_PUSH
+  // Plugged into the workstation, read in-browser via WebSerial/WebHID.
+  SERIAL_BRIDGE
+  // No integration: a human reads the display and types it in.
+  MANUAL
+}
+
+model Device {
+  id String @id @default(cuid())
+
+  // Facility asset tag, the number physically stickered on the unit.
+  assetTag     String  @unique
+  name         String
+  kind         DeviceKind
+  manufacturer String?
+  model        String?
+  serialNumber String?
+
+  transport DeviceTransport @default(MANUAL)
+  status    DeviceStatus    @default(OFFLINE)
+
+  // Where it lives. A monitor is normally bound to a bed; an analyser to a room.
+  wardId String?
+  ward   Ward?   @relation(fields: [wardId], references: [id])
+  bed    String?
+
+  // The application identifier this device puts in MSH-3, used to match an
+  // inbound HL7 message back to the asset register.
+  hl7SendingApplication String? @unique
+  ipAddress             String?
+
+  // Shared secret for REST_PUSH devices. Hashed, never returned by the API.
+  apiKeyHash String?
+
+  lastSeenAt DateTime?
+
+  // Biomedical engineering: statutory calibration and service intervals.
+  commissionedAt DateTime?
+  lastServicedAt DateTime?
+  serviceDueAt   DateTime?
+  calibrationDueAt DateTime?
+
+  notes String?
+
+  messages DeviceMessage[]
+  readings DeviceReading[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind, status])
+  @@index([wardId])
+  @@index([serviceDueAt])
+}
+
+// Raw inbound traffic, kept before parsing. When a monitor sends something we
+// cannot understand, this is the only way to find out what it actually said.
+model DeviceMessage {
+  id String @id @default(cuid())
+
+  deviceId String?
+  device   Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  transport DeviceTransport
+  // Verbatim payload, segment separators intact.
+  raw       String
+  messageType String?
+  controlId   String?
+
+  parsed    Boolean @default(false)
+  parseError String?
+
+  // Set once the message has been matched to a patient.
+  patientId String?
+
+  sourceIp  String?
+  receivedAt DateTime @default(now())
+
+  @@index([deviceId, receivedAt])
+  @@index([parsed, receivedAt])
+}
+
+// A single observation from a device, before a clinician accepts it.
+//
+// Device output is NOT written straight into the chart: an unattended monitor
+// produces artefact constantly — a lead falls off and it reports asystole. A
+// reading is staged here and a nurse confirms it into VitalReading.
+model DeviceReading {
+  id String @id @default(cuid())
+
+  deviceId String
+  device   Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  patientId String?
+
+  // OBX-3 observation identifier, e.g. "MDC_PULS_OXIM_SAT_O2".
+  code  String
+  label String
+  value String
+  unit  String
+  // OBX-8 abnormal flag as sent by the device.
+  abnormalFlag String?
+
+  measuredAt DateTime
+  receivedAt DateTime @default(now())
+
+  accepted     Boolean   @default(false)
+  acceptedById String?
+  acceptedAt   DateTime?
+  rejectedReason String?
+
+  @@index([deviceId, measuredAt])
+  @@index([patientId, measuredAt])
+  @@index([accepted, receivedAt])
 }

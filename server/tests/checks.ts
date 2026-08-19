@@ -16,6 +16,14 @@ import {
   stkPassword,
 } from '../src/lib/mpesa.js'
 import { diff, redact } from '../src/lib/audit.js'
+import {
+  Hl7Message,
+  MllpFramer,
+  buildAck,
+  parseHl7Date,
+  parseOru,
+  wrapMllp,
+} from '../src/lib/hl7.js'
 
 const now = new Date('2026-08-18T09:00:00Z')
 const d = (iso: string) => new Date(iso)
@@ -176,6 +184,83 @@ check('diffs only the fields that moved', () => {
     status: { from: 'PENDING', to: 'PAID' },
   })
   assert.equal(diff({ a: 1 }, { a: 1 }), undefined)
+})
+
+console.log('\nHL7 / MLLP')
+
+const ORU = [
+  'MSH|^~\&|PHILIPS_MX450_A|UZIMA|UZIMA_HMS|UZIMA|20260819132500||ORU^R01|MSG42|P|2.5',
+  'PID|1||IP/2026/04471^^^UZIMA^PI||Mwangi^Grace^Wanjiru||19790614|F',
+  'OBR|1||MX450|VITALS^Vital Signs^MDC|||20260819132500',
+  'OBX|1|NM|MDC_PULS^Heart Rate^MDC||96|/min|60-100||||F|||20260819132500',
+  'OBX|2|NM|MDC_SAT_O2^SpO2^MDC||91|%|95-100|L|||F|||20260819132500',
+  'OBX|3|NM|MDC_TEMP^Temperature^MDC||37.4|Cel|36.1-37.8||||D|||20260819132500',
+].join('\r')
+
+check('reads MSH routing fields, offset by the separator', () => {
+  const m = new Hl7Message(ORU)
+  assert.equal(m.messageType, 'ORU^R01')
+  assert.equal(m.controlId, 'MSG42')
+  assert.equal(m.sendingApplication, 'PHILIPS_MX450_A')
+})
+check('accepts newline as a segment separator, which real devices send', () => {
+  const m = new Hl7Message(ORU.replace(/\r/g, '\n'))
+  assert.equal(m.controlId, 'MSG42')
+})
+check('rejects anything that is not an HL7 message', () => {
+  assert.throws(() => new Hl7Message('{"not":"hl7"}'))
+})
+check('extracts observations and drops retracted results', () => {
+  const oru = parseOru(new Hl7Message(ORU))
+  assert.equal(oru.patientIdentifier, 'IP/2026/04471')
+  assert.equal(oru.patientName, 'Grace Mwangi')
+  // OBX-3 carries result status 'D' (deleted) and must not become a vital sign.
+  assert.equal(oru.observations.length, 2)
+  assert.equal(oru.observations[1].code, 'MDC_SAT_O2')
+  assert.equal(oru.observations[1].value, '91')
+  assert.equal(oru.observations[1].abnormalFlag, 'L')
+})
+check('reads an HL7 timestamp as Nairobi time when no offset is given', () => {
+  assert.equal(parseHl7Date('20260819132500')?.toISOString(), '2026-08-19T10:25:00.000Z')
+  assert.equal(parseHl7Date('20260819132500+0000')?.toISOString(), '2026-08-19T13:25:00.000Z')
+  assert.equal(parseHl7Date('rubbish'), null)
+})
+check('builds an ACK that echoes the control id', () => {
+  const ack = buildAck(new Hl7Message(ORU), 'AA')
+  assert.ok(ack.includes('MSA|AA|MSG42'))
+  // The ACK must name us as the sender and the device as the receiver.
+  assert.ok(ack.startsWith('MSH|'))
+  assert.ok(ack.includes('|UZIMA_HMS|UZIMA|PHILIPS_MX450_A|'))
+})
+check('builds a rejection ACK even with no parseable original', () => {
+  assert.ok(buildAck(null, 'AR', 'bad').includes('MSA|AR|UNKNOWN|bad'))
+})
+check('strips HL7 delimiters out of ACK error text', () => {
+  const ack = buildAck(null, 'AE', 'a|b^c&d')
+  assert.equal(ack.split('\r')[1], 'MSA|AE|UNKNOWN|a b c d')
+})
+
+check('reassembles one MLLP frame split across TCP reads', () => {
+  const framer = new MllpFramer()
+  const whole = wrapMllp('MSH|^~\&|A')
+  assert.deepEqual(framer.push(whole.subarray(0, 6)), [])
+  assert.deepEqual(framer.push(whole.subarray(6)), ['MSH|^~\&|A'])
+})
+check('splits several frames arriving in one read', () => {
+  const framer = new MllpFramer()
+  const buf = Buffer.concat([wrapMllp('one'), wrapMllp('two'), wrapMllp('three')])
+  assert.deepEqual(framer.push(buf), ['one', 'two', 'three'])
+})
+check('discards leading noise before the start byte', () => {
+  const framer = new MllpFramer()
+  const buf = Buffer.concat([Buffer.from('garbage'), wrapMllp('clean')])
+  assert.deepEqual(framer.push(buf), ['clean'])
+})
+check('does not hoard unbounded junk from a misbehaving device', () => {
+  const framer = new MllpFramer(64)
+  assert.deepEqual(framer.push(Buffer.alloc(200, 0x41)), [])
+  // Buffer was dropped, so a following good frame still parses.
+  assert.deepEqual(framer.push(wrapMllp('ok')), ['ok'])
 })
 
 console.log(`\n${passed} checks passed.\n`)

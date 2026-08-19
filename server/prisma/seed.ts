@@ -69,6 +69,9 @@ async function main() {
     prisma.prescriptionItem.deleteMany(),
     prisma.prescription.deleteMany(),
     prisma.stockMovement.deleteMany(),
+    prisma.deviceReading.deleteMany(),
+    prisma.deviceMessage.deleteMany(),
+    prisma.device.deleteMany(),
     prisma.drugBatch.deleteMany(),
     prisma.drug.deleteMany(),
     prisma.billingLine.deleteMany(),
@@ -656,6 +659,33 @@ async function main() {
       },
     },
   })
+
+  console.log('Seeding biomedical devices...')
+  const days = (n: number) => new Date(Date.now() + n * 24 * 60 * 60 * 1000)
+  const deviceDefs = [
+    { assetTag: 'BME-0121', name: 'IntelliVue MX450 — ICU Bay 1', kind: 'PATIENT_MONITOR', manufacturer: 'Philips', model: 'MX450', transport: 'HL7_MLLP', hl7SendingApplication: 'PHILIPS_MX450_A', ipAddress: '10.20.4.11', ward: 'Cardiac ICU', bed: 'Bed 1', serviceDueAt: days(120), calibrationDueAt: days(60) },
+    { assetTag: 'BME-0122', name: 'IntelliVue MX450 — ICU Bay 2', kind: 'PATIENT_MONITOR', manufacturer: 'Philips', model: 'MX450', transport: 'HL7_MLLP', hl7SendingApplication: 'PHILIPS_MX450_B', ipAddress: '10.20.4.12', ward: 'Cardiac ICU', bed: 'Bed 2', serviceDueAt: days(-14), calibrationDueAt: days(45) },
+    { assetTag: 'BME-0210', name: 'BeneVision N12 — HDU', kind: 'PATIENT_MONITOR', manufacturer: 'Mindray', model: 'N12', transport: 'HL7_MLLP', hl7SendingApplication: 'MINDRAY_N12_HDU', ipAddress: '10.20.4.31', ward: 'High Dependency Unit', bed: 'Bed 4', serviceDueAt: days(200), calibrationDueAt: days(-5) },
+    { assetTag: 'BME-0340', name: 'Cobas c311 Chemistry Analyser', kind: 'LAB_ANALYSER', manufacturer: 'Roche', model: 'c311', transport: 'HL7_MLLP', hl7SendingApplication: 'ROCHE_C311', ipAddress: '10.20.6.5', ward: null, bed: null, serviceDueAt: days(75), calibrationDueAt: days(20) },
+    { assetTag: 'BME-0402', name: 'Alaris GP Volumetric Pump', kind: 'INFUSION_PUMP', manufacturer: 'BD', model: 'Alaris GP', transport: 'MANUAL', hl7SendingApplication: null, ipAddress: null, ward: 'General Ward', bed: 'Bed 12', serviceDueAt: days(30), calibrationDueAt: days(30) },
+    { assetTag: 'BME-0455', name: 'Savina 300 Ventilator', kind: 'VENTILATOR', manufacturer: 'Draeger', model: 'Savina 300', transport: 'MANUAL', hl7SendingApplication: null, ipAddress: null, ward: 'Cardiac ICU', bed: 'Bed 3', serviceDueAt: days(-3), calibrationDueAt: days(90) },
+    { assetTag: 'BME-0510', name: 'Seca 878 Floor Scale — Casualty', kind: 'WEIGHING_SCALE', manufacturer: 'Seca', model: '878', transport: 'SERIAL_BRIDGE', hl7SendingApplication: null, ipAddress: null, ward: 'Casualty', bed: null, serviceDueAt: days(150), calibrationDueAt: days(150) },
+    { assetTag: 'BME-0620', name: 'Nellcor PM10N Pulse Oximeter', kind: 'PULSE_OXIMETER', manufacturer: 'Medtronic', model: 'PM10N', transport: 'MANUAL', hl7SendingApplication: null, ipAddress: null, ward: 'Maternity Ward', bed: null, serviceDueAt: days(60), calibrationDueAt: days(60) },
+  ]
+  for (const d of deviceDefs) {
+    const { ward, ...rest } = d
+    await prisma.device.create({
+      data: {
+        ...rest,
+        kind: rest.kind as never,
+        transport: rest.transport as never,
+        status: rest.transport === 'MANUAL' ? 'ONLINE' : 'OFFLINE',
+        wardId: ward ? wards.get(ward)!.id : null,
+        commissionedAt: days(-540),
+        lastServicedAt: days(-180),
+      },
+    })
+  }
 
   console.log('Seeding hospital metrics...')
   await prisma.hospitalMetric.createMany({

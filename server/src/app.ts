@@ -16,6 +16,8 @@ import { alertsRoutes } from './routes/alerts.routes.js'
 import { auditRoutes } from './routes/audit.routes.js'
 import { mpesaRoutes } from './routes/mpesa.routes.js'
 import { pharmacyRoutes } from './routes/pharmacy.routes.js'
+import { reportsRoutes } from './routes/reports.routes.js'
+import { devicesRoutes } from './routes/devices.routes.js'
 
 /**
  * Origins allowed to make credentialed requests. Reflecting an arbitrary
@@ -75,6 +77,8 @@ export function createApp() {
   app.use('/api', auditRoutes)
   app.use('/api', mpesaRoutes)
   app.use('/api', pharmacyRoutes)
+  app.use('/api', reportsRoutes)
+  app.use('/api', devicesRoutes)
 
   app.use(errorHandler)
 
