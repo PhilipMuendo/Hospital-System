@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { requireAuth } from '../middleware/requireAuth.js'
+import { idempotent } from '../middleware/idempotency.js'
 import { requireRole } from '../middleware/requireRole.js'
 
 export const vitalsRoutes = Router()
@@ -28,6 +29,7 @@ const createVitalSchema = z.object({
 vitalsRoutes.post(
   '/patients/:id/vitals',
   requireAuth,
+  idempotent,
   requireRole('NURSE', 'PHYSICIAN'),
   async (req, res, next) => {
     try {

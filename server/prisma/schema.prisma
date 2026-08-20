@@ -162,6 +162,7 @@ model User {
   imagingOrdered      ImagingOrder[]             @relation("ImagingOrderedBy")
   imagingPerformed    ImagingOrder[]             @relation("ImagingPerformedBy")
   imagingReported     ImagingOrder[]             @relation("ImagingReportedBy")
+  claimsSubmitted     ShaClaim[]                 @relation("ClaimSubmittedBy")
   medicationsGiven    MedicationAdministration[] @relation("MedicationGivenBy")
   alertsResolved      Alert[]       @relation("AlertResolvedBy")
 
@@ -227,6 +228,7 @@ model Patient {
   visits            Visit[]
   labOrders         LabOrder[]
   imagingOrders     ImagingOrder[]
+  shaClaims         ShaClaim[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -297,6 +299,7 @@ model BillingLine {
 
   mpesaTransactions MpesaTransaction[]
   dispenseEvent     DispenseEvent?
+  claimLines        ShaClaimLine[]
 
   @@index([patientId])
   @@index([status])
@@ -1232,4 +1235,170 @@ model ImagingOrder {
 
   @@index([status, createdAt])
   @@index([patientId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// SHA claims and KRA eTIMS
+//
+// Both are external systems this codebase cannot reach from a test
+// environment. They are therefore built the same way as M-Pesa: a real
+// lifecycle in our database, behind an adapter that is mocked by default and
+// refuses to pretend in production. What is modelled here is the part we own —
+// the claim's state and its evidence — not a guess at someone else's wire
+// format.
+// ---------------------------------------------------------------------------
+
+enum ClaimStatus {
+  /// Assembled but not sent. Still editable.
+  DRAFT
+  SUBMITTED
+  /// SHA acknowledged receipt and gave it a claim number.
+  ACKNOWLEDGED
+  APPROVED
+  /// Approved for less than claimed; the shortfall becomes patient liability.
+  PART_APPROVED
+  REJECTED
+  /// Rejected once, corrected, and resubmitted.
+  APPEALED
+  /// Money received and reconciled against the remittance advice.
+  PAID
+}
+
+model ShaClaim {
+  id String @id @default(cuid())
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  visitId   String?
+
+  /// Our reference, always present. SHA's reference arrives on acknowledgement.
+  internalRef String  @unique
+  claimNumber String?
+
+  /// Captured at submission time rather than read live from the patient, so a
+  /// later correction to their record cannot silently rewrite what was claimed.
+  memberNumber String
+  memberName   String
+  nationalId   String?
+
+  status ClaimStatus @default(DRAFT)
+
+  amountClaimed  Decimal  @db.Decimal(12, 2)
+  amountApproved Decimal? @db.Decimal(12, 2)
+
+  /// Free text from SHA. Kept verbatim — it is the basis of any appeal.
+  adjudicationNotes String?
+  rejectionCode     String?
+
+  submittedAt    DateTime?
+  submittedById  String?
+  submittedBy    User?     @relation("ClaimSubmittedBy", fields: [submittedById], references: [id])
+  acknowledgedAt DateTime?
+  adjudicatedAt  DateTime?
+  paidAt         DateTime?
+
+  /// Whole request and response envelopes, for dispute resolution.
+  requestPayload  Json?
+  responsePayload Json?
+
+  lines ShaClaimLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([patientId])
+}
+
+model ShaClaimLine {
+  id String @id @default(cuid())
+
+  claimId String
+  claim   ShaClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  /// The charge this line claims for. Nullable so a claim survives a billing
+  /// correction without losing its own history.
+  billingLineId String?
+  billingLine   BillingLine? @relation(fields: [billingLineId], references: [id], onDelete: SetNull)
+
+  code        String
+  description String
+  amount      Decimal @db.Decimal(10, 2)
+
+  /// Per-line adjudication. SHA commonly approves some lines and not others.
+  approvedAmount Decimal? @db.Decimal(10, 2)
+  rejectionCode  String?
+
+  @@index([claimId])
+  @@index([billingLineId])
+}
+
+// ---------------------------------------------------------------------------
+
+enum EtimsStatus {
+  PENDING
+  SIGNED
+  FAILED
+}
+
+/// A KRA eTIMS-signed invoice.
+///
+/// Kenyan law requires an electronic tax invoice carrying a control unit
+/// number and a verification QR. The signature is what makes the receipt the
+/// cashier prints a valid tax document, so it is stored against the invoice
+/// rather than regenerated on each print.
+model EtimsInvoice {
+  id String @id @default(cuid())
+
+  patientId String
+  /// Our invoice/receipt number, e.g. RCT/20260820/0001.
+  invoiceNumber String @unique
+
+  status EtimsStatus @default(PENDING)
+
+  totalAmount Decimal @db.Decimal(12, 2)
+  taxableAmount Decimal @db.Decimal(12, 2)
+  vatAmount     Decimal @db.Decimal(12, 2)
+
+  /// Returned by the control unit on success.
+  controlUnitNumber String?
+  invoiceSignature  String?
+  qrCodeUrl         String?
+  signedAt          DateTime?
+
+  failureReason String?
+  /// Retry count, so a persistent failure surfaces rather than looping.
+  attempts Int @default(0)
+
+  requestPayload  Json?
+  responsePayload Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([patientId])
+}
+
+/// Replay protection for mutations queued while a device was offline.
+///
+/// A ward tablet that loses signal keeps working and pushes its queue on
+/// reconnect. Without this, an interrupted sync that retries would chart the
+/// same dose twice — the eMAR is append-only, so a duplicate is not
+/// self-correcting the way an idempotent update would be.
+///
+/// The stored response is replayed verbatim so a retry is indistinguishable
+/// from the original call.
+model IdempotencyKey {
+  key      String @id
+  endpoint String
+  /// Actor, so one user's key cannot replay another's request.
+  userId   String
+
+  statusCode   Int
+  responseBody Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

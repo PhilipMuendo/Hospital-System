@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { requireAuth } from '../middleware/requireAuth.js'
+import { idempotent } from '../middleware/idempotency.js'
 import { requireRole } from '../middleware/requireRole.js'
 import { ApiError } from '../middleware/errorHandler.js'
 import { audit } from '../lib/audit.js'
@@ -150,6 +151,7 @@ const administerSchema = z
 nursingRoutes.post(
   '/prescription-items/:id/administer',
   requireAuth,
+  idempotent,
   requireRole('NURSE', 'PHYSICIAN', 'ADMIN'),
   async (req, res, next) => {
     try {

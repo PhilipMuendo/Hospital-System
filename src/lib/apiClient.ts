@@ -1,3 +1,16 @@
+import { enqueue, queueabilityOf } from './offline'
+
+/** Thrown when an action was safely queued rather than sent. */
+export class QueuedOfflineError extends Error {
+  readonly queued = true
+  readonly label: string
+
+  constructor(label: string) {
+    super(`${label} saved on this device — it will sync when the connection returns.`)
+    this.label = label
+  }
+}
+
 export class ApiError extends Error {
   status: number
   details?: unknown
@@ -10,6 +23,23 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = init?.method ?? 'GET'
+
+  // Offline writes: queue what is safe to replay, refuse the rest with a
+  // reason rather than a generic network error.
+  if (method !== 'GET' && !navigator.onLine) {
+    const { queueable, label, reason } = queueabilityOf(path)
+    if (!queueable) throw new ApiError(0, reason ?? 'You are offline.')
+
+    await enqueue({
+      path,
+      method,
+      body: init?.body ? JSON.parse(init.body as string) : undefined,
+      label: label!,
+    })
+    throw new QueuedOfflineError(label!)
+  }
+
   const res = await fetch(`/api${path}`, {
     credentials: 'include',
     headers: init?.body ? { 'Content-Type': 'application/json' } : undefined,

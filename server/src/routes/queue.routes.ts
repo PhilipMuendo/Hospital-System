@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { TriageAcuity } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
 import { requireAuth } from '../middleware/requireAuth.js'
+import { idempotent } from '../middleware/idempotency.js'
 import { requireRole } from '../middleware/requireRole.js'
 import { ApiError } from '../middleware/errorHandler.js'
 import { audit } from '../lib/audit.js'
@@ -269,6 +270,7 @@ const triageSchema = z.object({
 queueRoutes.post(
   '/visits/:id/triage',
   requireAuth,
+  idempotent,
   requireRole('NURSE', 'PHYSICIAN', 'ADMIN'),
   async (req, res, next) => {
     try {

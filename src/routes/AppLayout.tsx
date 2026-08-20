@@ -1,5 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from '../components/organisms/Sidebar'
+import { OfflineIndicator } from '../components/molecules/OfflineIndicator'
 import { NAV_ITEMS } from './navigation'
 
 /**
@@ -48,6 +49,8 @@ export function AppLayout() {
           </footer>
         </div>
       </main>
+
+      <OfflineIndicator />
     </div>
   )
 }

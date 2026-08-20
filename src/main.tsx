@@ -26,6 +26,18 @@ import { RequireRole } from './routes/RequireRole.tsx'
 import { AppLayout } from './routes/AppLayout.tsx'
 import { AuthProvider } from './context/AuthContext.tsx'
 import { queryClient } from './lib/queryClient.ts'
+import { startOfflineSync } from './lib/offline.ts'
+
+// Keep the shell available and flush queued clinical records on reconnect.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js').catch(() => {
+      // A failed registration must not break the app; it only means no
+      // offline shell on this device.
+    })
+  })
+}
+startOfflineSync()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
