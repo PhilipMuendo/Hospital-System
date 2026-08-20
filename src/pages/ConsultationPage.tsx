@@ -42,9 +42,15 @@ export function ConsultationPage() {
   const announcer = useAnnouncer()
   const [stationId, setStationId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [onwardId, setOnwardId] = useState('')
 
   const stationsQuery = useQuery({ queryKey: ['stations'], queryFn: () => api.get<Station[]>('/stations') })
   const rooms = (stationsQuery.data ?? []).filter((s) => s.kind === 'CONSULTATION')
+  // Where a patient can be sent after the consultation. Excludes reception,
+  // which is where they came from.
+  const onwardStations = (stationsQuery.data ?? []).filter(
+    (s) => s.kind !== 'RECEPTION' && s.id !== stationId,
+  )
 
   useEffect(() => {
     if (!stationId && rooms.length > 0) setStationId(rooms[0].id)
@@ -84,9 +90,20 @@ export function ConsultationPage() {
   })
 
   const complete = useMutation({
-    mutationFn: ({ id, closeVisit }: { id: string; closeVisit: boolean }) =>
-      api.post(`/tickets/${id}/complete`, { closeVisit, outcome: closeVisit ? 'Consultation complete' : undefined }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['queue'] }),
+    mutationFn: ({ id, nextStationId }: { id: string; nextStationId?: string }) =>
+      api.post(`/tickets/${id}/complete`, {
+        // Exactly one of these is meaningful: either the patient is routed
+        // onward or the visit is closed. The server rejects the ambiguous case.
+        closeVisit: !nextStationId,
+        nextStationId,
+        outcome: nextStationId ? undefined : 'Consultation complete',
+      }),
+    onSuccess: (r: any) => {
+      setError(null)
+      setOnwardId('')
+      if (r?.next) setError(`Sent onward — new token ${r.next.token}`)
+      queryClient.invalidateQueries({ queryKey: ['queue'] })
+    },
     onError: (e) => setError(e instanceof ApiError ? e.message : 'Could not complete'),
   })
 
@@ -191,18 +208,35 @@ export function ConsultationPage() {
                   <>
                     <button
                       type="button"
-                      onClick={() => complete.mutate({ id: current.id, closeVisit: true })}
-                      className="rounded-[var(--radius-xs)] bg-accent-500 px-5 py-2.5 text-[13px] font-semibold text-charcoal-950 hover:opacity-90"
+                      disabled={complete.isPending}
+                      onClick={() => complete.mutate({ id: current.id })}
+                      className="rounded-[var(--radius-xs)] bg-accent-500 px-5 py-2.5 text-[13px] font-semibold text-charcoal-950 hover:opacity-90 disabled:opacity-40"
                     >
-                      Complete & close visit
+                      Complete &amp; discharge
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => complete.mutate({ id: current.id, closeVisit: false })}
-                      className="rounded-[var(--radius-xs)] border border-white/10 px-4 py-2.5 text-[13px] text-mist-300 hover:text-mist-100"
-                    >
-                      Complete (route onward)
-                    </button>
+
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={onwardId}
+                        onChange={(e) => setOnwardId(e.target.value)}
+                        className="rounded-[var(--radius-xs)] border border-white/10 bg-surface-900/70 px-3 py-2.5 text-[13px] text-mist-100 outline-none focus:border-accent-500"
+                      >
+                        <option value="">Send to…</option>
+                        {onwardStations.map((st) => (
+                          <option key={st.id} value={st.id}>
+                            {st.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        disabled={!onwardId || complete.isPending}
+                        onClick={() => complete.mutate({ id: current.id, nextStationId: onwardId })}
+                        className="rounded-[var(--radius-xs)] border border-white/10 px-4 py-2.5 text-[13px] text-mist-300 hover:text-mist-100 disabled:opacity-35"
+                      >
+                        Send onward
+                      </button>
+                    </div>
                   </>
                 )}
               </div>

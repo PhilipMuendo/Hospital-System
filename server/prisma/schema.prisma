@@ -909,3 +909,19 @@ model TriageAssessment {
 
   @@index([acuity, performedAt])
 }
+
+/// Atomic sequence allocator.
+///
+/// Ticket numbers and visit numbers were previously derived by reading the
+/// current maximum and adding one. Under READ COMMITTED two concurrent
+/// check-ins read the same maximum and then collide on the unique index, so a
+/// reception desk with two clerks failed roughly half the time.
+///
+/// A single-statement upsert-and-increment serialises on the row instead, so
+/// concurrent callers queue behind each other and every one gets a distinct
+/// number.
+model Counter {
+  /// e.g. "ticket:<stationId>:2026-08-20" or "visit:2026-08".
+  key   String @id
+  value Int    @default(0)
+}

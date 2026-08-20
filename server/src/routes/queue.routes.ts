@@ -7,6 +7,7 @@ import { requireRole } from '../middleware/requireRole.js'
 import { ApiError } from '../middleware/errorHandler.js'
 import { audit } from '../lib/audit.js'
 import { publish, subscribe } from '../lib/queue-events.js'
+import { nextSequence, patientSequenceKey, ticketSequenceKey, visitSequenceKey } from '../lib/sequence.js'
 import {
   MAX_CALLS,
   formatToken,
@@ -120,9 +121,11 @@ queueRoutes.post(
       const data = registerSchema.parse(req.body)
 
       const patient = await prisma.$transaction(async (tx) => {
+        // Same lost-update race as the ticket and visit numbers: count() then
+        // insert lets two concurrent registrations mint the same OP number.
         const year = new Date().getFullYear()
-        const count = await tx.patient.count({ where: { opNumber: { startsWith: `OP/${year}/` } } })
-        const opNumber = `OP/${year}/${String(count + 1).padStart(5, '0')}`
+        const sequence = await nextSequence(tx, patientSequenceKey(year))
+        const opNumber = `OP/${year}/${String(sequence).padStart(5, '0')}`
 
         return tx.patient.create({
           data: {
@@ -192,13 +195,10 @@ queueRoutes.post(
       const today = serviceDate()
 
       const { visit, ticket } = await prisma.$transaction(async (tx) => {
-        const month = today.slice(0, 7)
-        const visitCount = await tx.visit.count({
-          where: { visitNumber: { startsWith: `OPD/${month.replace('-', '/')}/` } },
-        })
+        const sequence = await nextSequence(tx, visitSequenceKey(today.slice(0, 7)))
         const visit = await tx.visit.create({
           data: {
-            visitNumber: formatVisitNumber(visitCount + 1),
+            visitNumber: formatVisitNumber(sequence),
             patientId: data.patientId,
             type: data.type,
             chiefComplaint: data.chiefComplaint,
@@ -210,12 +210,7 @@ queueRoutes.post(
           },
         })
 
-        const last = await tx.queueTicket.findFirst({
-          where: { stationId: station.id, serviceDate: today },
-          orderBy: { number: 'desc' },
-          select: { number: true },
-        })
-        const number = (last?.number ?? 0) + 1
+        const number = await nextSequence(tx, ticketSequenceKey(station.id, today))
 
         const ticket = await tx.queueTicket.create({
           data: {
@@ -307,12 +302,7 @@ queueRoutes.post(
           data: { status: 'COMPLETED', completedAt: new Date() },
         })
 
-        const last = await tx.queueTicket.findFirst({
-          where: { stationId: station.id, serviceDate: today },
-          orderBy: { number: 'desc' },
-          select: { number: true },
-        })
-        const number = (last?.number ?? 0) + 1
+        const number = await nextSequence(tx, ticketSequenceKey(station.id, today))
 
         const ticket = await tx.queueTicket.create({
           data: {
@@ -373,9 +363,12 @@ queueRoutes.post(
 /* ------------------------------------------------------------------ */
 
 async function loadQueue(stationId: string) {
-  const today = serviceDate()
+  // Deliberately NOT filtered by serviceDate. serviceDate exists to reset the
+  // token numbering each morning, not to define who is still waiting — a
+  // patient queueing at 23:55 must not vanish from the room at midnight, and
+  // casualty runs through the night.
   const tickets = await prisma.queueTicket.findMany({
-    where: { stationId, serviceDate: today, status: { in: ['WAITING', 'CALLED', 'IN_SERVICE'] } },
+    where: { stationId, status: { in: ['WAITING', 'CALLED', 'IN_SERVICE'] } },
     include: {
       visit: {
         include: {
@@ -532,6 +525,16 @@ queueRoutes.post('/tickets/:id/complete', requireAuth, async (req, res, next) =>
       include: { visit: true },
     })
     if (!ticket) throw new ApiError(404, 'Ticket not found')
+    // Without this a double-click completes twice and issues two onward
+    // tickets, putting the same patient in the next queue in two places.
+    if (ticket.status === 'COMPLETED' || ticket.status === 'NO_SHOW' || ticket.status === 'CANCELLED') {
+      throw new ApiError(409, `${ticket.token} is already ${ticket.status.toLowerCase()}`)
+    }
+    // "Route onward" with nowhere to go used to fall through to the close
+    // branch, silently discharging a patient who was meant to go to the lab.
+    if (!data.closeVisit && !data.nextStationId) {
+      throw new ApiError(400, 'Choose where the patient goes next, or close the visit explicitly')
+    }
 
     const today = serviceDate()
     const result = await prisma.$transaction(async (tx) => {
@@ -540,7 +543,7 @@ queueRoutes.post('/tickets/:id/complete', requireAuth, async (req, res, next) =>
         data: { status: 'COMPLETED', completedAt: now },
       })
 
-      if (data.closeVisit || !data.nextStationId) {
+      if (data.closeVisit) {
         await tx.visit.update({
           where: { id: ticket.visitId },
           data: {
@@ -556,12 +559,7 @@ queueRoutes.post('/tickets/:id/complete', requireAuth, async (req, res, next) =>
       const station = await tx.station.findUnique({ where: { id: data.nextStationId } })
       if (!station) throw new ApiError(400, 'Unknown station')
 
-      const last = await tx.queueTicket.findFirst({
-        where: { stationId: station.id, serviceDate: today },
-        orderBy: { number: 'desc' },
-        select: { number: true },
-      })
-      const number = (last?.number ?? 0) + 1
+      const number = await nextSequence(tx, ticketSequenceKey(station.id, today))
 
       const onward = await tx.queueTicket.create({
         data: {
@@ -652,14 +650,15 @@ queueRoutes.post('/tickets/:id/no-show', requireAuth, async (req, res, next) => 
  */
 queueRoutes.get('/public/board', async (_req, res, next) => {
   try {
-    const today = serviceDate()
     const stations = await prisma.station.findMany({
       where: { active: true, kind: { in: ['CONSULTATION', 'TRIAGE', 'PHARMACY', 'CASHIER'] } },
       orderBy: { name: 'asc' },
     })
 
     const tickets = await prisma.queueTicket.findMany({
-      where: { serviceDate: today, status: { in: ['WAITING', 'CALLED'] } },
+      // Same reasoning as loadQueue: still-waiting means still waiting, even
+      // if the token was issued before midnight.
+      where: { status: { in: ['WAITING', 'CALLED'] } },
       include: { visit: { include: { patient: { select: { name: true } } } } },
       orderBy: { calledAt: 'desc' },
     })
