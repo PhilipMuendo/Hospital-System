@@ -1,3 +1,4 @@
+import { dosesPerDayFrom } from '../src/lib/lab.js'
 import { PrismaClient, type Role, type Sex } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
@@ -58,6 +59,12 @@ function generatedPerson(index: number, sex: Sex) {
 function generatedPhone(seed: number) {
   const digits = String(700000000 + ((seed * 104729) % 99999999)).slice(0, 9)
   return `+254 ${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 9)}`
+}
+
+
+/** Mirrors what the prescribing API does, so seeded rounds behave the same. */
+function withDoses<T extends { frequency: string }>(items: T[]) {
+  return items.map((i) => ({ ...i, dosesPerDay: dosesPerDayFrom(i.frequency) }))
 }
 
 async function main() {
@@ -616,10 +623,10 @@ async function main() {
       status: 'PARTIALLY_DISPENSED',
       notes: 'Diurese to euvolaemia; daily U/E while on IV furosemide.',
       items: {
-        create: [
+        create: withDoses([
           { drugId: drugs.get('PHARM-118')!, dose: '40mg', route: 'IV', frequency: 'BD', durationDays: 3, quantityPrescribed: 6, quantityDispensed: 4, instructions: 'Give slowly over 2 minutes.' },
           { drugId: drugs.get('PHARM-052')!, dose: '5mg', route: 'PO', frequency: 'OD', durationDays: 14, quantityPrescribed: 14, quantityDispensed: 0 },
-        ],
+        ]),
       },
     },
   })
@@ -632,10 +639,10 @@ async function main() {
       status: 'ACTIVE',
       notes: 'MgSO4 per eclampsia protocol; monitor reflexes and urine output hourly.',
       items: {
-        create: [
+        create: withDoses([
           { drugId: drugs.get('PHARM-090')!, dose: '4g loading', route: 'IV', frequency: 'STAT', quantityPrescribed: 2, quantityDispensed: 0 },
           { drugId: drugs.get('PHARM-088')!, dose: '20mg', route: 'PO', frequency: 'TDS', durationDays: 5, quantityPrescribed: 15, quantityDispensed: 0 },
-        ],
+        ]),
       },
     },
   })
@@ -648,11 +655,11 @@ async function main() {
       status: 'ACTIVE',
       notes: 'Step down to oral AL once tolerating fluids.',
       items: {
-        create: [
+        create: withDoses([
           { drugId: drugs.get('PHARM-093')!, dose: '120mg', route: 'IV', frequency: 'At 0, 12, 24h', quantityPrescribed: 3, quantityDispensed: 0 },
           { drugId: drugs.get('PHARM-131')!, dose: '4 tabs', route: 'PO', frequency: 'BD', durationDays: 3, quantityPrescribed: 24, quantityDispensed: 0 },
           { drugId: drugs.get('PHARM-004')!, dose: '1g', route: 'PO', frequency: 'QDS PRN', durationDays: 3, quantityPrescribed: 12, quantityDispensed: 0 },
-        ],
+        ]),
       },
     },
   })
@@ -665,10 +672,10 @@ async function main() {
       status: 'ACTIVE',
       notes: 'Analgesia ladder; discontinue IV antibiotics at 48h if afebrile.',
       items: {
-        create: [
+        create: withDoses([
           { drugId: drugs.get('PHARM-076')!, dose: '1g', route: 'IV', frequency: 'OD', durationDays: 3, quantityPrescribed: 3, quantityDispensed: 0 },
           { drugId: drugs.get('PHARM-102')!, dose: '5mg', route: 'IM', frequency: 'PRN 6-hourly', quantityPrescribed: 4, quantityDispensed: 0, instructions: 'Controlled drug - record in the DDA register on issue.' },
-        ],
+        ]),
       },
     },
   })
