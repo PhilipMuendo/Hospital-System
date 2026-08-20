@@ -171,6 +171,13 @@ nursingRoutes.post(
 
       const given = data.status === 'GIVEN' || data.status === 'GIVEN_LATE'
 
+      // Stock first: if nothing has reached the ward there is physically
+      // nothing to give, and telling the nurse to find a witness for a drug
+      // that is not on the trolley sends them on a pointless errand.
+      if (given && item.quantityDispensed === 0) {
+        throw new ApiError(409, 'No stock has been dispensed for this item yet')
+      }
+
       // Controlled drugs need two signatures at the trolley. Enforced here
       // rather than trusted to the UI, because this is the control the
       // Pharmacy and Poisons Board actually inspects for.
@@ -179,12 +186,6 @@ nursingRoutes.post(
       }
       if (data.witnessedById && data.witnessedById === req.user!.id) {
         throw new ApiError(400, 'The witness must be a second person')
-      }
-
-      // Nothing has reached the ward yet, so there is physically nothing to
-      // give — this catches a round being charted ahead of the trolley.
-      if (given && item.quantityDispensed === 0) {
-        throw new ApiError(409, 'No stock has been dispensed for this item yet')
       }
 
       const record = await prisma.medicationAdministration.create({

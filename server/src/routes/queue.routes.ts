@@ -14,7 +14,6 @@ import {
   formatToken,
   formatVisitNumber,
   isBreaching,
-  nextInQueue,
   orderQueue,
   priorityFor,
   serviceDate,
@@ -442,22 +441,48 @@ queueRoutes.post(
         throw new ApiError(409, `Complete ${inService.token} before calling the next patient`)
       }
 
-      const candidate = nextInQueue(
+      // Claiming the next patient must be atomic. Two clinicians pressing
+      // "call next" at the same moment previously both read the same head of
+      // the queue and were handed the SAME patient — one walks out and calls a
+      // name that another doctor is already seeing, and a slot is lost.
+      //
+      // The guarded update makes the database decide who claimed the ticket.
+      // A loser does not error: they take the next patient instead, which is
+      // what they wanted anyway.
+      const ordered = orderQueue(
         tickets.filter((t) => t.status !== 'IN_SERVICE'),
         now,
       )
-      if (!candidate) throw new ApiError(404, 'Queue is empty')
+      if (ordered.length === 0) throw new ApiError(404, 'Queue is empty')
 
-      const callCount = candidate.callCount + 1
-      const updated = await prisma.queueTicket.update({
-        where: { id: candidate.id },
-        data: {
-          status: 'CALLED',
-          calledAt: now,
-          callCount,
-          calledById: req.user!.id,
-          counter: counter ?? station.room ?? station.name,
-        },
+      let claimed: (typeof ordered)[number] | null = null
+      let callCount = 0
+
+      for (const candidate of ordered) {
+        const result = await prisma.queueTicket.updateMany({
+          // Only claimable while it is still in the state we read it in.
+          where: { id: candidate.id, status: candidate.status },
+          data: {
+            status: 'CALLED',
+            calledAt: now,
+            callCount: candidate.callCount + 1,
+            calledById: req.user!.id,
+            counter: counter ?? station.room ?? station.name,
+          },
+        })
+        if (result.count === 1) {
+          claimed = candidate
+          callCount = candidate.callCount + 1
+          break
+        }
+        // Someone else claimed this one in the last few milliseconds; try the
+        // next patient down the queue.
+      }
+
+      if (!claimed) throw new ApiError(409, 'Another clinician just called the last waiting patient')
+
+      const updated = await prisma.queueTicket.findUniqueOrThrow({
+        where: { id: claimed.id },
         include: { visit: { include: { patient: { select: { name: true } } } } },
       })
 

@@ -347,15 +347,38 @@ which needs no database.
 
 ## 9. Testing
 
+Three suites, three purposes:
+
+| Command | What it covers |
+|---|---|
+| `npm --prefix server test` | 68 unit checks — pure logic, no database, ~1s |
+| `npm --prefix server run test:e2e` | 32 journey and safety-control tests over real HTTP |
+| `npm --prefix server run test:load` | 6 concurrency and latency tests |
+| `npm --prefix server run test:all` | all of the above |
+
+**The e2e and load suites destroy and re-seed data**, so they refuse to run
+unless `TEST_DATABASE_URL` names a *different* database with "test" in its
+name. A suite that can silently wipe a hospital's records is a worse liability
+than no suite. The runner provisions the database, migrates, seeds, starts an
+API on port 4001 with every external adapter mocked, and tears it down.
+
+They talk to the API over HTTP rather than calling handlers, because what
+broke in this system — middleware order, role guards, transaction boundaries,
+races — only exists at that boundary.
+
+Writing them found two more bugs immediately (§10).
+
+### Unit checks
+
 `npm --prefix server test` — 68 checks, no database, runs in about a second.
 Covers the rules where a quiet mistake is expensive: FEFO, allergy matching,
 M-Pesa phone/timestamp/callback handling, audit redaction, queue ordering,
 HL7 parsing and MLLP framing, lab flagging, dose frequency, radiation safety.
 
-**What is not covered, honestly:** no integration tests, no browser tests, and
-nothing has been under concurrent load beyond the manual check-in test. Every
-bug in section 10 was found by *running the system*, not by a test. If you add
-one kind of test, make it an end-to-end pass over the outpatient journey.
+**What is still not covered:** no browser tests, so nothing verifies the UI
+renders or that a keyboard shortcut fires. The load suite runs on a laptop
+against a container — it catches regressions into seconds, it is not a
+capacity benchmark. And nothing tests the offline service worker.
 
 ---
 
@@ -375,6 +398,8 @@ None of these were caught by typecheck or unit tests:
 | Forged M-Pesa callback | Any bill settleable without payment |
 | Two cashiers settling one line | Two receipts for one KES 15,500 charge |
 | Patient search seq-scanning | Full table scan per keystroke at scale |
+| Two clinicians called the same patient | Both walk out and call one name; a slot is lost |
+| "Needs a witness" before "nothing dispensed" | Sent a nurse to find a witness for a drug not on the trolley |
 
 **Run the thing.** Typecheck and unit tests will not find this class of bug.
 
@@ -382,7 +407,9 @@ None of these were caught by typecheck or unit tests:
 
 ## 11. Known gaps
 
-- **No integration or browser tests.**
+- **No browser tests.** The UI is unverified by anything automated.
+- **No WAL archiving.** Nightly dumps give a 24-hour RPO — a full day of drug
+  charts. See RUNBOOK.md §6; this is the largest operational gap.
 - **JWTs cannot be revoked.** 12h expiry, no `jti`, no deny-list. A stolen
   token is valid until it expires.
 - **No PHI encryption at rest** beyond whatever the database provides.

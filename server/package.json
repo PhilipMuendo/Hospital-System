@@ -15,7 +15,10 @@
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
     "seed": "tsx prisma/seed.ts",
-    "test": "tsx tests/checks.ts"
+    "test": "tsx tests/checks.ts",
+    "test:e2e": "tsx tests/run-e2e.ts e2e.ts",
+    "test:load": "tsx tests/run-e2e.ts concurrency.ts",
+    "test:all": "npm run test && tsx tests/run-e2e.ts e2e.ts concurrency.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",

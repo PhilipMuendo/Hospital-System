@@ -13,6 +13,9 @@ React, TypeScript, Tailwind CSS v4, Framer Motion, Express, and Prisma.
   is: the safety controls, the payment trust model, the offline rules, and the
   bugs that shaped them. Read it before changing anything under
   `server/src/lib/` or any route touching money, medication or the audit trail.
+- **[RUNBOOK.md](RUNBOOK.md)** — operations: backup, restore, disaster
+  recovery, common incidents, and the monthly drill. Written to be followed at
+  3am by someone who did not build the system.
 - **[SECURITY.md](SECURITY.md)** — threat model, what was found and fixed, and
   what must be configured before production.
 
