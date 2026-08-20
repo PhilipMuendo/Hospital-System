@@ -11,10 +11,10 @@ interface SurgeryBlockProps {
 }
 
 const statusTint: Record<SurgeryStatus, string> = {
-  CONFIRMED: 'var(--color-accent-500)',
-  IN_PROGRESS: 'var(--color-status-healthy)',
-  DELAYED: 'var(--color-status-critical)',
-  CANCELLED: 'var(--color-mist-500)',
+  CONFIRMED: 'var(--color-primary-600)',
+  IN_PROGRESS: 'var(--color-stable)',
+  DELAYED: 'var(--color-critical)',
+  CANCELLED: 'var(--color-ink-600)',
 }
 
 // A pill-shaped booking block for the DAW-style scheduling timeline.
@@ -42,16 +42,16 @@ export function SurgeryBlock({ surgery, style, colliding, onDelete }: SurgeryBlo
       )}
       <div
         className={cn(
-          'relative flex h-full flex-col justify-center overflow-hidden rounded-full border px-4 py-1.5 stroke-elevated',
+          'relative flex h-full flex-col justify-center overflow-hidden rounded-full border px-4 py-1.5',
         )}
         style={{
           borderColor: `color-mix(in srgb, ${tint} 45%, transparent)`,
-          background: `linear-gradient(180deg, color-mix(in srgb, ${tint} 22%, var(--color-surface-800)) 0%, color-mix(in srgb, ${tint} 10%, var(--color-surface-800)) 100%)`,
+          background: `linear-gradient(180deg, color-mix(in srgb, ${tint} 22%, var(--color-neutral-bg)) 0%, color-mix(in srgb, ${tint} 10%, var(--color-neutral-bg)) 100%)`,
           boxShadow: `inset 0 0 24px color-mix(in srgb, ${tint} 18%, transparent), inset 0 1px 0 color-mix(in srgb, white 8%, transparent)`,
         }}
       >
-        <span className="truncate text-[12.5px] font-semibold text-mist-50">{surgery.procedure}</span>
-        <span className="truncate font-mono text-[11px] tabular text-mist-300">
+        <span className="truncate text-xs font-semibold text-ink-900">{surgery.procedure}</span>
+        <span className="truncate font-mono text-2xs tabular text-ink-700">
           {surgery.surgeon.name} · {surgery.patient.name}
         </span>
 
@@ -62,7 +62,7 @@ export function SurgeryBlock({ surgery, style, colliding, onDelete }: SurgeryBlo
               e.stopPropagation()
               onDelete(surgery.id)
             }}
-            className="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-charcoal-950/70 text-mist-400 opacity-0 transition-opacity hover:text-status-critical group-hover:opacity-100"
+            className="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-sunken/70 text-ink-600 opacity-0 transition-opacity hover:text-critical group-hover:opacity-100"
             title="Cancel booking"
           >
             <svg width="10" height="10" viewBox="0 0 10 10">

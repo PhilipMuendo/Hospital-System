@@ -1,28 +1,15 @@
-import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { cn } from '../../lib/utils'
 
-interface GlassPanelProps {
-  children: ReactNode
-  className?: string
-  noise?: boolean
-  as?: 'div' | 'section'
-  delay?: number
-}
-
-export function GlassPanel({ children, className, noise = true, delay = 0 }: GlassPanelProps) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 15, filter: 'blur(6px)' }}
-      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-      transition={{ duration: 0.65, ease: [0.22, 1.12, 0.4, 1], delay }}
-      className={cn(
-        'glass rounded-[var(--radius-lg)]',
-        noise && 'texture-noise',
-        className,
-      )}
-    >
-      {children}
-    </motion.div>
-  )
+/**
+ * Deprecated — use `Panel` from `components/ui`.
+ *
+ * Retained as a flat surface so the screens still referencing it render
+ * correctly during migration. The blur, shadow and 0.65s entrance animation
+ * it used to apply are gone: panel edges are now 1px rules, which survive
+ * glare and photocopying in a way glassmorphism does not, and entrance
+ * theatrics are fatigue on a screen someone watches for twelve hours.
+ */
+export function GlassPanel({ children, className }: { children: ReactNode; className?: string; noise?: boolean; delay?: number }) {
+  return <div className={cn('border border-line bg-canvas', className)}>{children}</div>
 }

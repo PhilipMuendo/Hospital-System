@@ -15,11 +15,11 @@ interface MpesaChargeProps {
 const terminalStatuses = new Set(['SUCCESS', 'FAILED', 'CANCELLED', 'TIMEOUT'])
 
 const statusCopy: Record<string, { label: string; tone: string }> = {
-  PENDING: { label: 'Waiting for the patient to enter their PIN…', tone: 'var(--color-status-warning)' },
-  SUCCESS: { label: 'Paid', tone: 'var(--color-status-healthy)' },
-  FAILED: { label: 'Payment failed', tone: 'var(--color-status-critical)' },
-  CANCELLED: { label: 'Cancelled on the handset', tone: 'var(--color-status-critical)' },
-  TIMEOUT: { label: 'The prompt timed out', tone: 'var(--color-status-critical)' },
+  PENDING: { label: 'Waiting for the patient to enter their PIN…', tone: 'var(--color-warning)' },
+  SUCCESS: { label: 'Paid', tone: 'var(--color-stable)' },
+  FAILED: { label: 'Payment failed', tone: 'var(--color-critical)' },
+  CANCELLED: { label: 'Cancelled on the handset', tone: 'var(--color-critical)' },
+  TIMEOUT: { label: 'The prompt timed out', tone: 'var(--color-critical)' },
 }
 
 /**
@@ -96,7 +96,7 @@ export function MpesaCharge({ line, patientPhone, onSettled }: MpesaChargeProps)
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="text-[11.5px] font-medium text-accent-400 hover:text-accent-300"
+          className="text-2xs font-medium text-primary-700 hover:text-primary-700"
         >
           Charge to M-Pesa
         </button>
@@ -105,7 +105,7 @@ export function MpesaCharge({ line, patientPhone, onSettled }: MpesaChargeProps)
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-          className="overflow-hidden rounded-[var(--radius-sm)] border border-white/8 bg-surface-800/60 p-3"
+          className="overflow-hidden rounded-sm border border-line bg-header p-3"
         >
           <div className="flex flex-wrap items-center gap-2">
             <input
@@ -114,7 +114,7 @@ export function MpesaCharge({ line, patientPhone, onSettled }: MpesaChargeProps)
               onChange={(e) => setPhone(e.target.value)}
               placeholder="07XX XXX XXX"
               disabled={inFlight}
-              className="min-w-0 flex-1 rounded-[var(--radius-2xs)] border border-white/8 bg-surface-900/70 px-2.5 py-1.5 font-mono text-[12.5px] text-mist-100 outline-none placeholder:text-mist-600 focus:border-accent-500/60 disabled:opacity-50"
+              className="min-w-0 flex-1 rounded-[var(--radius-2xs)] border border-line bg-header px-2.5 py-1.5 font-mono text-xs text-ink-900 outline-none placeholder:text-ink-500 focus:border-primary-200 disabled:opacity-50"
             />
             <Button
               size="sm"
@@ -136,12 +136,12 @@ export function MpesaCharge({ line, patientPhone, onSettled }: MpesaChargeProps)
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="mt-2 text-[12px]"
-                style={{ color: error ? 'var(--color-status-critical)' : statusCopy[status!]?.tone }}
+                className="mt-2 text-xs"
+                style={{ color: error ? 'var(--color-critical)' : statusCopy[status!]?.tone }}
               >
                 {error ?? statusCopy[status!]?.label}
                 {statusQuery.data?.mpesaReceiptNumber && (
-                  <span className="ml-1.5 font-mono text-mist-400">
+                  <span className="ml-1.5 font-mono text-ink-600">
                     {statusQuery.data.mpesaReceiptNumber}
                   </span>
                 )}
@@ -150,19 +150,19 @@ export function MpesaCharge({ line, patientPhone, onSettled }: MpesaChargeProps)
           </AnimatePresence>
 
           {configQuery.data?.mocked && transactionId && status === 'PENDING' && (
-            <div className="mt-2 flex items-center gap-2 border-t border-white/6 pt-2">
-              <span className="text-[11px] uppercase tracking-wide text-mist-600">Mock mode</span>
+            <div className="mt-2 flex items-center gap-2 border-t border-line pt-2">
+              <span className="text-2xs uppercase tracking-wide text-ink-500">Mock mode</span>
               <button
                 type="button"
                 onClick={() => completeMock.mutate('0')}
-                className="text-[11.5px] text-status-healthy hover:underline"
+                className="text-2xs text-stable hover:underline"
               >
                 Simulate paid
               </button>
               <button
                 type="button"
                 onClick={() => completeMock.mutate('1032')}
-                className="text-[11.5px] text-status-critical hover:underline"
+                className="text-2xs text-critical hover:underline"
               >
                 Simulate cancelled
               </button>

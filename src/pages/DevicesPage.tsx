@@ -114,7 +114,7 @@ export function DevicesPage() {
       </div>
 
       {error && (
-        <div className="rounded-[var(--radius-sm)] border border-status-critical/30 bg-status-critical/10 px-4 py-3 text-[13px] text-status-critical">
+        <div className="rounded-sm border border-critical-line bg-critical-bg px-4 py-3 text-sm text-critical">
           {error}
         </div>
       )}
@@ -124,7 +124,7 @@ export function DevicesPage() {
 
         {tab === 'Confirmation Queue' && (
           <>
-            <p className="mt-4 text-[12.5px] text-mist-500">
+            <p className="mt-4 text-xs text-ink-600">
               Device output is staged here, not written straight to the chart. A displaced sensor reports
               nonsense — a clinician confirms each reading before it becomes part of the record.
             </p>
@@ -132,7 +132,7 @@ export function DevicesPage() {
             <div className="mt-4 max-h-[520px] overflow-y-auto pr-1">
               <TableRow
                 columns="1.3fr 1.2fr 0.8fr 1fr 1.1fr"
-                className="text-[11px] font-medium uppercase tracking-wide text-mist-500"
+                className="text-2xs font-medium uppercase tracking-wide text-ink-600"
               >
                 <span>Observation</span>
                 <span>Patient</span>
@@ -142,23 +142,23 @@ export function DevicesPage() {
               </TableRow>
 
               {readingsQuery.isLoading ? (
-                <Skeleton className="mt-2 h-56 rounded-[var(--radius-sm)]" />
+                <Skeleton className="mt-2 h-56 rounded-sm" />
               ) : readings.length === 0 ? (
-                <p className="mt-4 rounded-[var(--radius-sm)] border border-dashed border-white/8 px-4 py-8 text-center text-[13px] text-mist-600">
+                <p className="mt-4 rounded-sm border border-dashed border-line px-4 py-8 text-center text-sm text-ink-500">
                   No readings awaiting confirmation.
                 </p>
               ) : (
                 readings.map((r) => (
                   <TableRow key={r.id} columns="1.3fr 1.2fr 0.8fr 1fr 1.1fr">
                     <div className="min-w-0">
-                      <p className="truncate text-[13.5px] text-mist-100">{r.label}</p>
-                      <p className="truncate font-mono text-[11px] text-mist-600">{r.code}</p>
+                      <p className="truncate text-sm text-ink-900">{r.label}</p>
+                      <p className="truncate font-mono text-2xs text-ink-500">{r.code}</p>
                     </div>
                     <div className="min-w-0">
                       {r.patient ? (
                         <>
-                          <p className="truncate text-[13px] text-mist-300">{r.patient.name}</p>
-                          <p className="truncate text-[11px] text-mist-600">
+                          <p className="truncate text-sm text-ink-700">{r.patient.name}</p>
+                          <p className="truncate text-2xs text-ink-500">
                             {r.patient.ipNumber} · {r.patient.bed}
                           </p>
                         </>
@@ -167,15 +167,15 @@ export function DevicesPage() {
                       )}
                     </div>
                     <div>
-                      <span className="font-mono text-[14px] tabular text-mist-50">{r.value}</span>
-                      <span className="ml-1 text-[11px] text-mist-500">{r.unit}</span>
+                      <span className="font-mono text-sm tabular text-ink-900">{r.value}</span>
+                      <span className="ml-1 text-2xs text-ink-600">{r.unit}</span>
                       {r.abnormalFlag && (
-                        <span className="ml-1.5 text-[11px] text-status-warning">{r.abnormalFlag}</span>
+                        <span className="ml-1.5 text-2xs text-warning">{r.abnormalFlag}</span>
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-[12.5px] text-mist-400">{r.device.name}</p>
-                      <p className="truncate text-[11px] text-mist-600">{formatDateTime(r.measuredAt)}</p>
+                      <p className="truncate text-xs text-ink-600">{r.device.name}</p>
+                      <p className="truncate text-2xs text-ink-500">{formatDateTime(r.measuredAt)}</p>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       <button
@@ -183,7 +183,7 @@ export function DevicesPage() {
                         disabled={!r.patient || accept.isPending}
                         onClick={() => accept.mutate({ id: r.id, status: r.abnormalFlag ? 'WARNING' : 'HEALTHY' })}
                         title={r.patient ? undefined : 'Reading is not matched to a patient'}
-                        className="rounded-[var(--radius-xs)] bg-accent-500 px-2.5 py-1 text-[11.5px] font-semibold text-charcoal-950 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
+                        className="rounded-xs bg-primary-600 px-2.5 py-1 text-2xs font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
                       >
                         Confirm
                       </button>
@@ -191,7 +191,7 @@ export function DevicesPage() {
                         type="button"
                         disabled={reject.isPending}
                         onClick={() => reject.mutate(r.id)}
-                        className="rounded-[var(--radius-xs)] border border-white/10 px-2.5 py-1 text-[11.5px] text-mist-400 transition-colors hover:border-status-critical/40 hover:text-status-critical"
+                        className="rounded-xs border border-line px-2.5 py-1 text-2xs text-ink-600 transition-colors hover:border-critical-line hover:text-critical"
                       >
                         Artefact
                       </button>
@@ -207,7 +207,7 @@ export function DevicesPage() {
           <div className="mt-5 max-h-[560px] overflow-y-auto pr-1">
             <TableRow
               columns="1.5fr 1fr 1.1fr 1fr 0.9fr"
-              className="text-[11px] font-medium uppercase tracking-wide text-mist-500"
+              className="text-2xs font-medium uppercase tracking-wide text-ink-600"
             >
               <span>Device</span>
               <span>Location</span>
@@ -217,37 +217,37 @@ export function DevicesPage() {
             </TableRow>
 
             {devicesQuery.isLoading ? (
-              <Skeleton className="mt-2 h-64 rounded-[var(--radius-sm)]" />
+              <Skeleton className="mt-2 h-64 rounded-sm" />
             ) : devices.length === 0 ? (
-              <p className="mt-4 rounded-[var(--radius-sm)] border border-dashed border-white/8 px-4 py-8 text-center text-[13px] text-mist-600">
+              <p className="mt-4 rounded-sm border border-dashed border-line px-4 py-8 text-center text-sm text-ink-500">
                 No devices registered yet.
               </p>
             ) : (
               devices.map((d) => (
                 <TableRow key={d.id} columns="1.5fr 1fr 1.1fr 1fr 0.9fr">
                   <div className="min-w-0">
-                    <p className="truncate text-[13.5px] text-mist-100">{d.name}</p>
-                    <p className="truncate text-[11px] text-mist-600">
+                    <p className="truncate text-sm text-ink-900">{d.name}</p>
+                    <p className="truncate text-2xs text-ink-500">
                       {d.assetTag} · {kindLabel[d.kind] ?? d.kind}
                       {d.manufacturer ? ` · ${d.manufacturer}` : ''}
                     </p>
                   </div>
-                  <span className="text-[12.5px] text-mist-400">
+                  <span className="text-xs text-ink-600">
                     {d.ward?.name ?? '—'}
                     {d.bed ? ` · ${d.bed}` : ''}
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-[12.5px] text-mist-300">
+                    <p className="truncate text-xs text-ink-700">
                       {transportLabel[d.transport] ?? d.transport}
                     </p>
                     {d.hl7SendingApplication && (
-                      <p className="truncate font-mono text-[10.5px] text-mist-600">
+                      <p className="truncate font-mono text-2xs text-ink-500">
                         {d.hl7SendingApplication}
                         {d.ipAddress ? ` @ ${d.ipAddress}` : ''}
                       </p>
                     )}
                   </div>
-                  <span className="text-[12px] text-mist-500">
+                  <span className="text-xs text-ink-600">
                     {d.lastSeenAt ? formatDateTime(d.lastSeenAt) : 'Never'}
                   </span>
                   <div className="flex flex-wrap gap-1">
@@ -273,14 +273,14 @@ export function DevicesPage() {
 function Stat({ label, value, tone }: { label: string; value: string; tone?: 'warning' | 'critical' }) {
   const color =
     tone === 'critical'
-      ? 'var(--color-status-critical)'
+      ? 'var(--color-critical)'
       : tone === 'warning'
-        ? 'var(--color-status-warning)'
-        : 'var(--color-mist-50)'
+        ? 'var(--color-warning)'
+        : 'var(--color-ink-900)'
   return (
     <GlassPanel className="p-4">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-mist-500">{label}</p>
-      <p className="mt-1.5 font-mono text-[19px] tabular font-semibold" style={{ color }}>
+      <p className="text-2xs font-medium uppercase tracking-wide text-ink-600">{label}</p>
+      <p className="mt-1.5 font-mono text-lg tabular font-semibold" style={{ color }}>
         {value}
       </p>
     </GlassPanel>

@@ -1,112 +1,120 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { GlassPanel } from '../components/atoms/GlassPanel'
-import { Button } from '../components/atoms/Button'
 import { useAuth } from '../context/AuthContext'
+import { Alert, Button, TextInput } from '../components/ui'
 
-const DEMO_ACCOUNTS = [
-  { role: 'Admin', email: 'admin@uzimageneral.ke' },
-  { role: 'Physician', email: 'a.njeri@uzimageneral.ke' },
-  { role: 'Nurse', email: 'achieng.otieno@uzimageneral.ke' },
-  { role: 'Billing', email: 'b.nyambura@uzimageneral.ke' },
-]
-
+/**
+ * Sign in.
+ *
+ * A real `<form>`, so Enter submits and password managers work. No marketing
+ * panel, no hero image — this screen is crossed dozens of times a shift and
+ * every element that is not the two fields is friction.
+ */
 export function LoginPage() {
   const { user, login, loginError, isLoggingIn } = useAuth()
   const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [touched, setTouched] = useState(false)
 
   if (user) {
-    const from = (location.state as { from?: Location })?.from?.pathname ?? '/'
-    return <Navigate to={from} replace />
+    const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname
+    return <Navigate to={from ?? '/dashboard'} replace />
   }
 
-  async function handleSubmit(e: FormEvent) {
+  const missing = touched && (!email || !password)
+
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setTouched(true)
+    if (!email || !password) return
     try {
       await login(email, password)
     } catch {
-      // surfaced via loginError below
+      // Surfaced through loginError; nothing to do here.
     }
   }
 
   return (
-    <div className="relative grid min-h-svh place-items-center overflow-hidden bg-charcoal-950 px-5">
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(55% 45% at 50% 0%, color-mix(in srgb, var(--color-accent-600) 16%, transparent) 0%, transparent 60%)',
-        }}
-      />
-
-      <GlassPanel className="relative w-full max-w-[400px] p-8" delay={0}>
-        <div className="flex items-center gap-2.5">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-gradient-to-b from-accent-400 to-accent-600">
-            <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
-              <path d="M1.5 8.5h2.5L5.2 5l2 6 1.5-5.5 1 3H14.5" stroke="#08090b" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    <div className="flex min-h-svh items-center justify-center bg-sunken px-4 py-10">
+      <div className="w-full max-w-sm">
+        <div className="mb-6 flex items-center gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-sm bg-primary-600">
+            <svg width="22" height="22" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M1.5 8.5h2.5L5.2 5l2 6 1.5-5.5 1 3H14.5"
+                stroke="#fff"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </div>
           <div>
-            <h1 className="text-[17px]">Uzima General Hospital</h1>
-            <p className="text-[12px] text-mist-500">Staff Sign In</p>
+            <h1 className="text-lg font-semibold text-ink-900">Uzima General Hospital</h1>
+            <p className="text-xs text-ink-600">Staff portal · Nairobi</p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-medium text-mist-400">Email</span>
-            <input
-              type="email"
-              required
+        <form onSubmit={onSubmit} className="border border-line bg-canvas p-5" noValidate>
+          <h2 className="text-md font-semibold text-ink-900">Sign in</h2>
+          <p className="mt-0.5 text-sm text-ink-600">Use your hospital account.</p>
+
+          {loginError && (
+            <div className="mt-4">
+              <Alert tone="critical" title="Could not sign in">
+                {loginError}
+              </Alert>
+            </div>
+          )}
+
+          <div className="mt-4 flex flex-col gap-4">
+            <TextInput
               autoFocus
+              label="Email address"
+              type="email"
+              autoComplete="username"
+              inputMode="email"
+              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@uzimageneral.ke"
-              className="rounded-[var(--radius-xs)] border border-white/8 bg-surface-800/70 px-3.5 py-2.5 text-[14px] text-mist-50 outline-none placeholder:text-mist-600 focus:border-accent-500/60"
+              error={touched && !email ? 'Enter your email address' : undefined}
+              placeholder="name@uzimageneral.ke"
             />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-medium text-mist-400">Password</span>
-            <input
+
+            <TextInput
+              label="Password"
               type="password"
+              autoComplete="current-password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="rounded-[var(--radius-xs)] border border-white/8 bg-surface-800/70 px-3.5 py-2.5 text-[14px] text-mist-50 outline-none placeholder:text-mist-600 focus:border-accent-500/60"
+              error={touched && !password ? 'Enter your password' : undefined}
             />
-          </label>
+          </div>
 
-          {loginError && <p className="text-[13px] text-status-critical">{loginError}</p>}
-
-          <Button type="submit" size="md" disabled={isLoggingIn} className="mt-1 justify-center">
-            {isLoggingIn ? 'Signing in…' : 'Sign In'}
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            block
+            className="mt-5"
+            loading={isLoggingIn}
+            loadingText="Signing in…"
+            disabled={missing}
+          >
+            Sign in
           </Button>
+
+          <p className="mt-4 text-xs text-ink-600">
+            Accounts are issued by the hospital administrator. There is no public sign-up.
+          </p>
         </form>
 
-        <div className="mt-7 border-t border-white/6 pt-5">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-mist-500">Demo Accounts</p>
-          <p className="mt-1 text-[12px] text-mist-600">Password for all: Passw0rd!</p>
-          <div className="mt-2.5 flex flex-col gap-1.5">
-            {DEMO_ACCOUNTS.map((a) => (
-              <button
-                key={a.email}
-                type="button"
-                onClick={() => {
-                  setEmail(a.email)
-                  setPassword('Passw0rd!')
-                }}
-                className="flex items-center justify-between rounded-[var(--radius-2xs)] px-2.5 py-1.5 text-left text-[12.5px] text-mist-400 hover:bg-white/5 hover:text-mist-100"
-              >
-                <span>{a.role}</span>
-                <span className="font-mono text-[11px] tabular text-mist-600">{a.email}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </GlassPanel>
+        <p className="mt-4 text-center text-xs text-ink-500">
+          Access is logged. Only open records you are treating.
+        </p>
+      </div>
     </div>
   )
 }

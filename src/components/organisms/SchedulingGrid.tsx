@@ -81,14 +81,14 @@ export function SchedulingGrid() {
     <GlassPanel className="p-6 lg:p-8" delay={0.25}>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[12px] font-medium uppercase tracking-wide text-mist-500">Smart Scheduling</p>
-          <h2 className="mt-1 text-[20px]">Surgical Rooms &middot; Today</h2>
+          <p className="text-xs font-medium uppercase tracking-wide text-ink-600">Smart Scheduling</p>
+          <h2 className="mt-1 text-xl">Surgical Rooms &middot; Today</h2>
         </div>
         <div className="flex items-center gap-5">
-          <div className="flex items-center gap-4 text-[12px] text-mist-400">
-            <LegendDot color="var(--color-accent-500)" label="Confirmed" />
-            <LegendDot color="var(--color-status-healthy)" label="In progress" />
-            <LegendDot color="var(--color-status-critical)" label="Delayed" />
+          <div className="flex items-center gap-4 text-xs text-ink-600">
+            <LegendDot color="var(--color-primary-600)" label="Confirmed" />
+            <LegendDot color="var(--color-stable)" label="In progress" />
+            <LegendDot color="var(--color-critical)" label="Delayed" />
           </div>
           {canSchedule && (
             <Button size="sm" onClick={() => setFormOpen((o) => !o)}>
@@ -117,7 +117,7 @@ export function SchedulingGrid() {
             {hours.map((h) => (
               <span
                 key={h}
-                className="absolute top-0 font-mono text-[11px] tabular text-mist-500"
+                className="absolute top-0 font-mono text-2xs tabular text-ink-600"
                 style={{ left: (h - START_HOUR) * HOUR_WIDTH }}
               >
                 {h.toString().padStart(2, '0')}:00
@@ -130,10 +130,10 @@ export function SchedulingGrid() {
             {ROOMS.map((room) => (
               <div key={room.id} className="flex items-stretch">
                 <div className="flex w-24 shrink-0 items-center pr-3">
-                  <span className="font-mono text-[12px] tabular text-mist-300">{room.label}</span>
+                  <span className="font-mono text-xs tabular text-ink-700">{room.label}</span>
                 </div>
                 <div
-                  className="relative h-16 rounded-[var(--radius-sm)] border border-white/6 bg-surface-800/40"
+                  className="relative h-16 rounded-sm border border-line bg-header"
                   style={{ width: totalWidth }}
                 >
                   {/* hour gridlines */}
@@ -252,10 +252,10 @@ function NewBookingForm({ onClose, onCreated }: { onClose: () => void; onCreated
       transition={{ type: 'spring', stiffness: 340, damping: 32 }}
       className="overflow-hidden"
     >
-      <div className="mt-5 rounded-[var(--radius-md)] border border-white/8 bg-surface-800/50 p-4">
+      <div className="mt-5 rounded-md border border-line bg-header p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           <div className="relative">
-            <label className="mb-1 block text-[11px] text-mist-500">Patient</label>
+            <label className="mb-1 block text-2xs text-ink-600">Patient</label>
             <input
               type="text"
               value={patientId ? patientLabel : search}
@@ -267,7 +267,7 @@ function NewBookingForm({ onClose, onCreated }: { onClose: () => void; onCreated
               onFocus={() => setPickerOpen(true)}
               onBlur={() => setTimeout(() => setPickerOpen(false), 150)}
               placeholder="Search patient…"
-              className="w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-900/70 px-3 py-2 text-[13px] text-mist-100 outline-none placeholder:text-mist-600 focus:border-accent-500/60"
+              className="w-full rounded-xs border border-line bg-header px-3 py-2 text-sm text-ink-900 outline-none placeholder:text-ink-500 focus:border-primary-200"
             />
             <AnimatePresence>
               {pickerOpen && (patientsQuery.data?.length ?? 0) > 0 && (
@@ -275,7 +275,7 @@ function NewBookingForm({ onClose, onCreated }: { onClose: () => void; onCreated
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 6 }}
-                  className="glass texture-noise absolute left-0 right-0 z-30 mt-2 max-h-48 overflow-y-auto rounded-[var(--radius-sm)] p-1.5"
+                  className="absolute left-0 right-0 z-30 mt-1 max-h-48 overflow-y-auto border border-line-strong bg-canvas p-1 shadow-[var(--shadow-overlay)]"
                 >
                   {patientsQuery.data!.map((p) => (
                     <button
@@ -287,10 +287,10 @@ function NewBookingForm({ onClose, onCreated }: { onClose: () => void; onCreated
                         setPatientLabel(p.name)
                         setPickerOpen(false)
                       }}
-                      className="flex w-full items-center justify-between rounded-[var(--radius-2xs)] px-3 py-2 text-left text-[13px] text-mist-300 hover:bg-white/5 hover:text-mist-50"
+                      className="flex w-full items-center justify-between rounded-[var(--radius-2xs)] px-3 py-2 text-left text-sm text-ink-700 hover:bg-white/5 hover:text-ink-900"
                     >
                       <span className="truncate">{p.name}</span>
-                      <span className="ml-2 shrink-0 font-mono text-[11px] tabular text-mist-600">{p.ipNumber}</span>
+                      <span className="ml-2 shrink-0 font-mono text-2xs tabular text-ink-500">{p.ipNumber}</span>
                     </button>
                   ))}
                 </motion.div>
@@ -299,18 +299,18 @@ function NewBookingForm({ onClose, onCreated }: { onClose: () => void; onCreated
           </div>
 
           <div>
-            <label className="mb-1 block text-[11px] text-mist-500">Procedure</label>
+            <label className="mb-1 block text-2xs text-ink-600">Procedure</label>
             <input
               type="text"
               value={procedure}
               onChange={(e) => setProcedure(e.target.value)}
               placeholder="e.g. Appendectomy"
-              className="w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-900/70 px-3 py-2 text-[13px] text-mist-100 outline-none placeholder:text-mist-600 focus:border-accent-500/60"
+              className="w-full rounded-xs border border-line bg-header px-3 py-2 text-sm text-ink-900 outline-none placeholder:text-ink-500 focus:border-primary-200"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-[11px] text-mist-500">Surgeon</label>
+            <label className="mb-1 block text-2xs text-ink-600">Surgeon</label>
             <Dropdown
               label=""
               value={surgeonName || 'Select…'}
@@ -321,7 +321,7 @@ function NewBookingForm({ onClose, onCreated }: { onClose: () => void; onCreated
           </div>
 
           <div>
-            <label className="mb-1 block text-[11px] text-mist-500">Room</label>
+            <label className="mb-1 block text-2xs text-ink-600">Room</label>
             <Dropdown
               label=""
               value={roomLabel}
@@ -332,32 +332,32 @@ function NewBookingForm({ onClose, onCreated }: { onClose: () => void; onCreated
           </div>
 
           <div>
-            <label className="mb-1 block text-[11px] text-mist-500">Start Time (Nairobi)</label>
+            <label className="mb-1 block text-2xs text-ink-600">Start Time (Nairobi)</label>
             <input
               type="time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className="w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-900/70 px-3 py-2 text-[13px] text-mist-100 outline-none focus:border-accent-500/60"
+              className="w-full rounded-xs border border-line bg-header px-3 py-2 text-sm text-ink-900 outline-none focus:border-primary-200"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-[11px] text-mist-500">Duration (minutes)</label>
+            <label className="mb-1 block text-2xs text-ink-600">Duration (minutes)</label>
             <input
               type="number"
               min={15}
               step={15}
               value={durationMinutes}
               onChange={(e) => setDurationMinutes(Number(e.target.value))}
-              className="w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-900/70 px-3 py-2 text-[13px] text-mist-100 outline-none focus:border-accent-500/60"
+              className="w-full rounded-xs border border-line bg-header px-3 py-2 text-sm text-ink-900 outline-none focus:border-primary-200"
             />
           </div>
         </div>
 
         {conflict && (
-          <div className="mt-3 rounded-[var(--radius-sm)] border border-status-critical/30 bg-status-critical/10 px-3.5 py-2.5">
-            <p className="text-[12.5px] text-status-critical">{conflict.message}</p>
-            <ul className="mt-1 text-[12px] text-mist-400">
+          <div className="mt-3 rounded-sm border border-critical-line bg-critical-bg px-3.5 py-2.5">
+            <p className="text-xs text-critical">{conflict.message}</p>
+            <ul className="mt-1 text-xs text-ink-600">
               {conflict.conflicts.map((c) => (
                 <li key={c.id}>
                   {c.procedure} · {c.patient.name}

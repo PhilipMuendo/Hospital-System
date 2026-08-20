@@ -1,37 +1,34 @@
-import { cn } from '../../lib/utils'
 import type { OccupancyStatus } from '../../lib/occupancy'
+import { StatusChip, type StatusTone } from '../ui/Status'
 
 type BadgeTone = OccupancyStatus | 'neutral'
 
-interface BadgeProps {
+/**
+ * Deprecated — use `StatusChip` from `components/ui`.
+ *
+ * Kept as a thin adapter so the screens still importing it get the design
+ * system's chip (icon + colour + label) rather than a second, slightly
+ * different badge. The old component signalled state with colour alone.
+ */
+const toneFor: Record<BadgeTone, StatusTone> = {
+  healthy: 'stable',
+  warning: 'warning',
+  critical: 'critical',
+  neutral: 'neutral',
+}
+
+export function Badge({
+  status,
+  children,
+  className,
+}: {
   status: BadgeTone
   children: React.ReactNode
   className?: string
-}
-
-const statusStyles: Record<BadgeTone, string> = {
-  neutral: 'bg-white/6 text-mist-300 border-white/12',
-  healthy: 'bg-status-healthy/12 text-status-healthy border-status-healthy/25',
-  warning: 'bg-status-warning/12 text-status-warning border-status-warning/25',
-  critical: 'bg-status-critical/14 text-status-critical border-status-critical/30',
-}
-
-export function Badge({ status, children, className }: BadgeProps) {
+}) {
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide',
-        statusStyles[status],
-        className,
-      )}
-    >
-      <span
-        className="h-1.5 w-1.5 rounded-full"
-        style={{
-          background: status === 'neutral' ? 'var(--color-mist-500)' : `var(--color-status-${status})`,
-        }}
-      />
+    <StatusChip tone={toneFor[status] ?? 'neutral'} className={className}>
       {children}
-    </span>
+    </StatusChip>
   )
 }

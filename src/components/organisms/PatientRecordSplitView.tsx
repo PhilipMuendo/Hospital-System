@@ -13,6 +13,7 @@ import { HeartbeatLine } from '../molecules/HeartbeatLine'
 import { MpesaCharge } from '../molecules/MpesaCharge'
 import { MedicationsTab } from './MedicationsTab'
 import { api } from '../../lib/apiClient'
+import { PatientHeader, SearchInput } from '../ui'
 import { useAuth } from '../../context/AuthContext'
 import { calculateAge, formatDate, formatDateTime, formatKES } from '../../lib/format'
 import type {
@@ -28,9 +29,9 @@ import type {
 const TABS = ['Summary', 'Labs', 'Imaging', 'Meds', 'Billing']
 
 const flagColor: Record<string, string> = {
-  NORMAL: 'var(--color-status-healthy)',
-  LOW: 'var(--color-status-warning)',
-  HIGH: 'var(--color-status-critical)',
+  NORMAL: 'var(--color-stable)',
+  LOW: 'var(--color-warning)',
+  HIGH: 'var(--color-critical)',
 }
 
 const billingStatusLabel: Record<BillingStatus, 'healthy' | 'warning' | 'critical'> = {
@@ -150,12 +151,37 @@ export function PatientRecordSplitView() {
       : (billingQuery.data ?? []).filter((b) => b.status === billingFilter.toUpperCase())
 
   return (
-    <GlassPanel className="grid grid-cols-1 overflow-hidden md:grid-cols-[minmax(0,30%)_minmax(0,70%)]" delay={0.15}>
+    <div className="flex flex-col">
+      {/* Identity is never off-screen while a patient-scoped action is
+          possible. Wrong-patient error is the commonest serious error in
+          hospital software, and this is the structural defence against it. */}
+      {patient && (
+        <PatientHeader
+          patient={{
+            id: patient.id,
+            name: patient.name,
+            dob: patient.dob,
+            sex: patient.sex,
+            opNumber: (patient as { opNumber?: string | null }).opNumber ?? null,
+            ipNumber: patient.ipNumber,
+            nationalId: patient.nationalId,
+            ward: patient.ward,
+            bed: patient.bed,
+            allergies: patient.allergies,
+            codeStatus: patient.codeStatus,
+            status: patient.status,
+            physician: patient.primaryPhysician?.name,
+            admittedAt: patient.admittedAt,
+          }}
+        />
+      )}
+
+      <GlassPanel className="grid grid-cols-1 overflow-hidden md:grid-cols-[minmax(0,30%)_minmax(0,70%)]">
       {/* Left pane — 30% identity & vitals */}
-      <div className="flex flex-col gap-6 border-b border-white/6 p-6 md:border-b-0 md:border-r">
+      <div className="flex flex-col gap-6 border-b border-line p-6 md:border-b-0 md:border-r">
         <div className="relative">
-          <input
-            type="text"
+          <SearchInput
+            label="Search patients"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value)
@@ -163,8 +189,8 @@ export function PatientRecordSplitView() {
             }}
             onFocus={() => setPickerOpen(true)}
             onBlur={() => setTimeout(() => setPickerOpen(false), 150)}
-            placeholder="Search patients by name or IP number…"
-            className="w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-800/70 px-3.5 py-2 text-[13px] text-mist-100 outline-none placeholder:text-mist-600 focus:border-accent-500/60"
+            onClear={() => setSearch('')}
+            placeholder="Name or IP number…"
           />
           <AnimatePresence>
             {pickerOpen && (pickerQuery.data?.length ?? 0) > 0 && (
@@ -173,7 +199,7 @@ export function PatientRecordSplitView() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 6, scale: 0.98 }}
                 transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-                className="glass texture-noise absolute left-0 right-0 z-30 mt-2 max-h-64 overflow-y-auto rounded-[var(--radius-sm)] p-1.5"
+                className="absolute left-0 right-0 z-30 mt-1 max-h-64 overflow-y-auto border border-line-strong bg-canvas p-1 shadow-[var(--shadow-overlay)]"
               >
                 {pickerQuery.data!.map((p) => (
                   <button
@@ -185,10 +211,10 @@ export function PatientRecordSplitView() {
                       setSearch('')
                       setPickerOpen(false)
                     }}
-                    className="flex w-full items-center justify-between rounded-[var(--radius-2xs)] px-3 py-2 text-left text-[13px] text-mist-300 hover:bg-white/5 hover:text-mist-50"
+                    className="flex min-h-10 w-full items-center justify-between rounded-xs px-3 py-2 text-left text-sm text-ink-800 hover:bg-primary-50"
                   >
                     <span className="truncate">{p.name}</span>
-                    <span className="ml-2 shrink-0 font-mono text-[11px] tabular text-mist-600">{p.ward.name} · {p.bed}</span>
+                    <span className="ml-2 shrink-0 font-mono text-2xs tabular text-ink-500">{p.ward.name} · {p.bed}</span>
                   </button>
                 ))}
               </motion.div>
@@ -208,8 +234,8 @@ export function PatientRecordSplitView() {
           <div className="flex items-center gap-3.5">
             <Avatar initials={patient.avatarInitials} />
             <div className="min-w-0">
-              <h3 className="truncate text-[17px]">{patient.name}</h3>
-              <p className="truncate text-[12.5px] text-mist-500">{patient.ipNumber}</p>
+              <h3 className="truncate text-md">{patient.name}</h3>
+              <p className="truncate text-xs text-ink-600">{patient.ipNumber}</p>
             </div>
           </div>
         )}
@@ -222,19 +248,19 @@ export function PatientRecordSplitView() {
         )}
 
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-mist-500">Live Vitals</p>
+          <p className="text-2xs font-medium uppercase tracking-wide text-ink-600">Live Vitals</p>
           <HeartbeatLine className="mt-2 h-12 w-full" />
           <div className="mt-3 grid grid-cols-2 gap-2.5">
             {vitalsQuery.isLoading
-              ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[54px] rounded-[var(--radius-sm)]" />)
+              ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[54px] rounded-sm" />)
               : (vitalsQuery.data ?? []).length === 0
-                ? <p className="col-span-2 text-[12.5px] text-mist-600">No vitals recorded.</p>
+                ? <p className="col-span-2 text-xs text-ink-500">No vitals recorded.</p>
                 : (vitalsQuery.data ?? []).map((v) => (
-                    <div key={v.id} className="rounded-[var(--radius-sm)] border border-white/6 bg-surface-800/50 px-3 py-2.5">
-                      <p className="text-[11px] text-mist-500">{v.label}</p>
-                      <p className="mt-0.5 font-mono text-[15px] tabular text-mist-50">
+                    <div key={v.id} className="rounded-sm border border-line bg-header px-3 py-2.5">
+                      <p className="text-2xs text-ink-600">{v.label}</p>
+                      <p className="mt-0.5 font-mono text-base tabular text-ink-900">
                         {v.value}
-                        <span className="ml-1 text-[11px] font-sans text-mist-500">{v.unit}</span>
+                        <span className="ml-1 text-2xs font-sans text-ink-600">{v.unit}</span>
                       </p>
                     </div>
                   ))}
@@ -242,7 +268,7 @@ export function PatientRecordSplitView() {
         </div>
 
         {patient && (
-          <div className="flex flex-col gap-3 border-t border-white/6 pt-5 text-[13px]">
+          <div className="flex flex-col gap-3 border-t border-line pt-5 text-sm">
             <Field label="Date of Birth" value={formatDate(patient.dob)} />
             <Field label="Age / Sex" value={`${calculateAge(patient.dob)} · ${sexLabel[patient.sex]}`} />
             <Field label="Blood Type" value={patient.bloodType} />
@@ -286,7 +312,7 @@ export function PatientRecordSplitView() {
 
               {tab === 'Labs' && (
                 <div className="flex flex-col">
-                  <TableRow columns="24px 2.1fr 1fr 1.3fr 1fr" className="text-[11px] font-medium uppercase tracking-wide text-mist-500">
+                  <TableRow columns="24px 2.1fr 1fr 1.3fr 1fr" className="text-2xs font-medium uppercase tracking-wide text-ink-600">
                     <span />
                     <span>Test</span>
                     <span>Result</span>
@@ -294,7 +320,7 @@ export function PatientRecordSplitView() {
                     <span>Collected</span>
                   </TableRow>
                   {labsQuery.isLoading ? (
-                    <Skeleton className="mt-2 h-40 rounded-[var(--radius-sm)]" />
+                    <Skeleton className="mt-2 h-40 rounded-sm" />
                   ) : (labsQuery.data ?? []).length === 0 ? (
                     <EmptyState message="No lab results on file." />
                   ) : (
@@ -305,12 +331,12 @@ export function PatientRecordSplitView() {
                           disabled={!canReviewLabs}
                           onChange={(v) => reviewLab.mutate({ id: l.id, reviewed: v })}
                         />
-                        <span className="truncate text-[13.5px] text-mist-100">{l.test}</span>
-                        <span className="font-mono text-[13px] tabular" style={{ color: flagColor[l.flag] }}>
+                        <span className="truncate text-sm text-ink-900">{l.test}</span>
+                        <span className="font-mono text-sm tabular" style={{ color: flagColor[l.flag] }}>
                           {l.result}
                         </span>
-                        <span className="font-mono text-[12.5px] tabular text-mist-500">{l.range}</span>
-                        <span className="text-[12.5px] text-mist-500">{formatDateTime(l.collectedAt)}</span>
+                        <span className="font-mono text-xs tabular text-ink-600">{l.range}</span>
+                        <span className="text-xs text-ink-600">{formatDateTime(l.collectedAt)}</span>
                       </TableRow>
                     ))
                   )}
@@ -320,22 +346,22 @@ export function PatientRecordSplitView() {
               {tab === 'Imaging' && (
                 <div className="flex flex-col gap-3">
                   {imagingQuery.isLoading ? (
-                    <Skeleton className="h-32 rounded-[var(--radius-sm)]" />
+                    <Skeleton className="h-32 rounded-sm" />
                   ) : (imagingQuery.data ?? []).length === 0 ? (
                     <EmptyState message="No imaging studies on file." />
                   ) : (
                     (imagingQuery.data ?? []).map((s) => (
-                      <div key={s.id} className="rounded-[var(--radius-sm)] border border-white/6 bg-surface-800/50 px-4 py-3.5">
+                      <div key={s.id} className="rounded-sm border border-line bg-header px-4 py-3.5">
                         <div className="flex items-center justify-between">
-                          <p className="text-[13.5px] font-medium text-mist-50">{s.study}</p>
-                          <span className="rounded-full border border-white/8 px-2 py-0.5 font-mono text-[10.5px] tabular text-mist-400">
+                          <p className="text-sm font-medium text-ink-900">{s.study}</p>
+                          <span className="rounded-full border border-line px-2 py-0.5 font-mono text-2xs tabular text-ink-600">
                             {s.modality}
                           </span>
                         </div>
-                        <p className="mt-1 text-[12.5px] text-mist-500">
+                        <p className="mt-1 text-xs text-ink-600">
                           {formatDate(s.performedAt)} · {s.radiologistName}
                         </p>
-                        <p className="mt-2 text-[13px] text-mist-300">{s.impression}</p>
+                        <p className="mt-2 text-sm text-ink-700">{s.impression}</p>
                       </div>
                     ))
                   )}
@@ -344,22 +370,22 @@ export function PatientRecordSplitView() {
 
               {tab === 'Billing' && (
                 <div className="flex flex-col">
-                  <TableRow columns="1.8fr 0.8fr 0.8fr 0.7fr" className="text-[11px] font-medium uppercase tracking-wide text-mist-500">
+                  <TableRow columns="1.8fr 0.8fr 0.8fr 0.7fr" className="text-2xs font-medium uppercase tracking-wide text-ink-600">
                     <span>Description</span>
                     <span>Code</span>
                     <span>Amount</span>
                     <span>Status</span>
                   </TableRow>
                   {billingQuery.isLoading ? (
-                    <Skeleton className="mt-2 h-32 rounded-[var(--radius-sm)]" />
+                    <Skeleton className="mt-2 h-32 rounded-sm" />
                   ) : filteredBilling.length === 0 ? (
                     <EmptyState message="No billing lines match this filter." />
                   ) : (
                     filteredBilling.map((b) => (
                       <TableRow key={b.id} columns="1.8fr 0.8fr 0.8fr 0.7fr">
                         <div className="min-w-0">
-                          <p className="truncate text-[13.5px] text-mist-100">{b.description}</p>
-                          <p className="truncate text-[11.5px] text-mist-600">
+                          <p className="truncate text-sm text-ink-900">{b.description}</p>
+                          <p className="truncate text-2xs text-ink-500">
                             {payerLabel[b.payer]}
                             {b.mpesaReference ? ` · M-Pesa ${b.mpesaReference}` : ''}
                           </p>
@@ -375,8 +401,8 @@ export function PatientRecordSplitView() {
                             />
                           )}
                         </div>
-                        <span className="font-mono text-[12.5px] tabular text-mist-500">{b.code}</span>
-                        <span className="font-mono text-[13px] tabular text-mist-100">{formatKES(b.amount)}</span>
+                        <span className="font-mono text-xs tabular text-ink-600">{b.code}</span>
+                        <span className="font-mono text-sm tabular text-ink-900">{formatKES(b.amount)}</span>
                         <BillingStatusCell
                           status={b.status}
                           editable={canEditBilling}
@@ -391,22 +417,23 @@ export function PatientRecordSplitView() {
           </AnimatePresence>
         </div>
       </div>
-    </GlassPanel>
+      </GlassPanel>
+    </div>
   )
 }
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <p className="shrink-0 text-[11px] text-mist-500">{label}</p>
-      <p className="text-right text-mist-200">{value}</p>
+      <p className="shrink-0 text-2xs text-ink-600">{label}</p>
+      <p className="text-right text-ink-800">{value}</p>
     </div>
   )
 }
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="mt-2 rounded-[var(--radius-sm)] border border-dashed border-white/8 px-4 py-6 text-center text-[13px] text-mist-600">
+    <div className="mt-2 rounded-sm border border-dashed border-line px-4 py-6 text-center text-sm text-ink-500">
       {message}
     </div>
   )
@@ -434,7 +461,7 @@ function BillingStatusCell({
               onChange(opt)
               setEditing(false)
             }}
-            className="rounded-full border border-white/8 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-mist-300 hover:border-accent-500/50 hover:text-accent-300"
+            className="rounded-full border border-line px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide text-ink-700 hover:border-primary-200 hover:text-primary-700"
           >
             {opt.toLowerCase()}
           </button>
@@ -454,9 +481,9 @@ function SummaryTab({ patient, loading }: { patient: PatientDetail | undefined; 
   if (loading || !patient) {
     return (
       <div className="flex flex-col gap-4">
-        <Skeleton className="h-24 rounded-[var(--radius-sm)]" />
-        <Skeleton className="h-24 rounded-[var(--radius-sm)]" />
-        <Skeleton className="h-24 rounded-[var(--radius-sm)]" />
+        <Skeleton className="h-24 rounded-sm" />
+        <Skeleton className="h-24 rounded-sm" />
+        <Skeleton className="h-24 rounded-sm" />
       </div>
     )
   }
@@ -468,21 +495,21 @@ function SummaryTab({ patient, loading }: { patient: PatientDetail | undefined; 
   return (
     <div className="flex flex-col gap-4">
       {patient.chiefComplaint && (
-        <div className="rounded-[var(--radius-sm)] border border-white/6 bg-surface-800/50 p-4">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-mist-500">Chief Complaint</p>
-          <p className="mt-1.5 text-[13.5px] text-mist-200">{patient.chiefComplaint}</p>
+        <div className="rounded-sm border border-line bg-header p-4">
+          <p className="text-2xs font-medium uppercase tracking-wide text-ink-600">Chief Complaint</p>
+          <p className="mt-1.5 text-sm text-ink-800">{patient.chiefComplaint}</p>
         </div>
       )}
       {patient.assessment && (
-        <div className="rounded-[var(--radius-sm)] border border-white/6 bg-surface-800/50 p-4">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-mist-500">Assessment</p>
-          <p className="mt-1.5 text-[13.5px] text-mist-200">{patient.assessment}</p>
+        <div className="rounded-sm border border-line bg-header p-4">
+          <p className="text-2xs font-medium uppercase tracking-wide text-ink-600">Assessment</p>
+          <p className="mt-1.5 text-sm text-ink-800">{patient.assessment}</p>
         </div>
       )}
       {patient.carePlan.length > 0 && (
-        <div className="rounded-[var(--radius-sm)] border border-white/6 bg-surface-800/50 p-4">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-mist-500">Care Plan</p>
-          <ul className="mt-2 flex flex-col gap-2 text-[13.5px] text-mist-200">
+        <div className="rounded-sm border border-line bg-header p-4">
+          <p className="text-2xs font-medium uppercase tracking-wide text-ink-600">Care Plan</p>
+          <ul className="mt-2 flex flex-col gap-2 text-sm text-ink-800">
             {patient.carePlan.map((item) => (
               <li key={item}>{item}</li>
             ))}

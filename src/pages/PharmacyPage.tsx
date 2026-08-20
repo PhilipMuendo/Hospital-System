@@ -87,7 +87,7 @@ export function PharmacyPage() {
       </div>
 
       {error && (
-        <div className="rounded-[var(--radius-sm)] border border-status-critical/30 bg-status-critical/10 px-4 py-3 text-[13px] text-status-critical">
+        <div className="rounded-sm border border-critical-line bg-critical-bg px-4 py-3 text-sm text-critical">
           {error}
         </div>
       )}
@@ -98,21 +98,21 @@ export function PharmacyPage() {
         {tab === 'Dispensing Queue' && (
           <div className="mt-5 flex flex-col gap-4">
             {queueQuery.isLoading ? (
-              <Skeleton className="h-48 rounded-[var(--radius-sm)]" />
+              <Skeleton className="h-48 rounded-sm" />
             ) : (queueQuery.data ?? []).length === 0 ? (
-              <p className="rounded-[var(--radius-sm)] border border-dashed border-white/8 px-4 py-8 text-center text-[13px] text-mist-600">
+              <p className="rounded-sm border border-dashed border-line px-4 py-8 text-center text-sm text-ink-500">
                 Nothing awaiting dispensing. All prescriptions are fulfilled.
               </p>
             ) : (
               (queueQuery.data ?? []).map((rx) => (
                 <div
                   key={rx.id}
-                  className="rounded-[var(--radius-sm)] border border-white/6 bg-surface-800/50 p-4"
+                  className="rounded-sm border border-line bg-header p-4"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <p className="text-[14px] font-medium text-mist-50">{rx.patient.name}</p>
-                      <p className="text-[11.5px] text-mist-500">
+                      <p className="text-sm font-medium text-ink-900">{rx.patient.name}</p>
+                      <p className="text-2xs text-ink-600">
                         {rx.patient.ipNumber} · prescribed by {rx.prescriber} · {formatDate(rx.createdAt)}
                       </p>
                     </div>
@@ -125,11 +125,11 @@ export function PharmacyPage() {
                       return (
                         <div
                           key={item.id}
-                          className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-xs)] bg-surface-900/60 px-3 py-2.5"
+                          className="flex flex-wrap items-center justify-between gap-3 rounded-xs bg-header px-3 py-2.5"
                         >
                           <div className="min-w-0 flex-1">
-                            <p className="text-[13px] text-mist-100">{item.drug}</p>
-                            <p className="text-[11.5px] text-mist-500">
+                            <p className="text-sm text-ink-900">{item.drug}</p>
+                            <p className="text-2xs text-ink-600">
                               {item.dose} · {item.route} · {item.frequency} · {item.quantityDispensed}/
                               {item.quantityPrescribed} dispensed
                               {item.inStock !== undefined ? ` · ${item.inStock} in stock` : ''}
@@ -147,7 +147,7 @@ export function PharmacyPage() {
                                     ? 'Insufficient unexpired stock'
                                     : undefined
                               }
-                              className="shrink-0 rounded-[var(--radius-xs)] bg-accent-500 px-3 py-1.5 text-[12px] font-semibold text-charcoal-950 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
+                              className="shrink-0 rounded-xs bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
                             >
                               {short ? 'Out of stock' : `Dispense ${outstanding}`}
                             </button>
@@ -166,7 +166,7 @@ export function PharmacyPage() {
           <div className="mt-5 max-h-[520px] overflow-y-auto pr-1">
             <TableRow
               columns="1.8fr 0.7fr 0.7fr 0.7fr 0.8fr"
-              className="text-[11px] font-medium uppercase tracking-wide text-mist-500"
+              className="text-2xs font-medium uppercase tracking-wide text-ink-600"
             >
               <span>Drug</span>
               <span>Form</span>
@@ -176,30 +176,30 @@ export function PharmacyPage() {
             </TableRow>
 
             {drugsQuery.isLoading ? (
-              <Skeleton className="mt-2 h-64 rounded-[var(--radius-sm)]" />
+              <Skeleton className="mt-2 h-64 rounded-sm" />
             ) : (
               drugs.map((d) => (
                 <TableRow key={d.id} columns="1.8fr 0.7fr 0.7fr 0.7fr 0.8fr">
                   <div className="min-w-0">
-                    <p className="truncate text-[13.5px] text-mist-100">
+                    <p className="truncate text-sm text-ink-900">
                       {d.genericName} {d.strength}
-                      {d.brandName ? <span className="text-mist-500"> ({d.brandName})</span> : null}
+                      {d.brandName ? <span className="text-ink-600"> ({d.brandName})</span> : null}
                     </p>
-                    <p className="flex flex-wrap gap-1.5 truncate text-[11px] text-mist-600">
+                    <p className="flex flex-wrap gap-1.5 truncate text-2xs text-ink-500">
                       <span>{d.code}</span>
-                      {d.kemlListed && <span className="text-accent-400">KEML</span>}
-                      {d.controlled && <span className="text-status-critical">CONTROLLED</span>}
+                      {d.kemlListed && <span className="text-primary-700">KEML</span>}
+                      {d.controlled && <span className="text-critical">CONTROLLED</span>}
                     </p>
                   </div>
-                  <span className="text-[12.5px] text-mist-400">{d.form}</span>
+                  <span className="text-xs text-ink-600">{d.form}</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-[13px] tabular text-mist-100">{d.inStock}</span>
+                    <span className="font-mono text-sm tabular text-ink-900">{d.inStock}</span>
                     {d.belowReorderLevel && <Badge status="warning">LOW</Badge>}
                   </div>
-                  <span className="font-mono text-[12.5px] tabular text-mist-300">{formatKES(d.unitPrice)}</span>
-                  <span className="text-[12.5px] text-mist-500">
+                  <span className="font-mono text-xs tabular text-ink-700">{formatKES(d.unitPrice)}</span>
+                  <span className="text-xs text-ink-600">
                     {d.earliestExpiry ? formatDate(d.earliestExpiry) : '—'}
-                    {d.expiringSoon > 0 && <span className="ml-1 text-status-warning">({d.expiringSoon})</span>}
+                    {d.expiringSoon > 0 && <span className="ml-1 text-warning">({d.expiringSoon})</span>}
                   </span>
                 </TableRow>
               ))
@@ -214,10 +214,10 @@ export function PharmacyPage() {
 function Stat({ label, value, tone }: { label: string; value: string; tone?: 'warning' }) {
   return (
     <GlassPanel className="p-4">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-mist-500">{label}</p>
+      <p className="text-2xs font-medium uppercase tracking-wide text-ink-600">{label}</p>
       <p
-        className="mt-1.5 font-mono text-[19px] tabular font-semibold"
-        style={{ color: tone === 'warning' ? 'var(--color-status-warning)' : 'var(--color-mist-50)' }}
+        className="mt-1.5 font-mono text-lg tabular font-semibold"
+        style={{ color: tone === 'warning' ? 'var(--color-warning)' : 'var(--color-ink-900)' }}
       >
         {value}
       </p>

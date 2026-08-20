@@ -113,7 +113,7 @@ export function ReportsPage() {
 
   if (!report) {
     return (
-      <GlassPanel className="p-8 text-center text-[13.5px] text-mist-500">
+      <GlassPanel className="p-8 text-center text-sm text-ink-600">
         No reports are available for your role.
       </GlassPanel>
     )
@@ -125,7 +125,7 @@ export function ReportsPage() {
       <GlassPanel className="no-print p-5">
         <div className="flex flex-wrap items-end gap-4">
           <div className="min-w-[240px] flex-1">
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-mist-500">
+            <label className="mb-1.5 block text-2xs font-medium uppercase tracking-wide text-ink-600">
               Report
             </label>
             <Dropdown
@@ -141,21 +141,21 @@ export function ReportsPage() {
 
           {report.needsDate && (
             <div>
-              <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-mist-500">
+              <label className="mb-1.5 block text-2xs font-medium uppercase tracking-wide text-ink-600">
                 Business date
               </label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="rounded-[var(--radius-xs)] border border-white/8 bg-surface-800/60 px-3 py-2 text-[13px] text-mist-100 outline-none focus:border-accent-500"
+                className="rounded-xs border border-line bg-header px-3 py-2 text-sm text-ink-900 outline-none focus:border-primary-600"
               />
             </div>
           )}
 
           {report.needsPatient && (
             <div className="min-w-[260px] flex-1">
-              <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-mist-500">
+              <label className="mb-1.5 block text-2xs font-medium uppercase tracking-wide text-ink-600">
                 Patient
               </label>
               <input
@@ -165,13 +165,13 @@ export function ReportsPage() {
                   setPatientId(null)
                 }}
                 placeholder="Search name or IP number…"
-                className="w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-800/60 px-3 py-2 text-[13px] text-mist-100 outline-none placeholder:text-mist-600 focus:border-accent-500"
+                className="w-full rounded-xs border border-line bg-header px-3 py-2 text-sm text-ink-900 outline-none placeholder:text-ink-500 focus:border-primary-600"
               />
               {patients.length > 0 && (
                 <select
                   value={activePatientId ?? ''}
                   onChange={(e) => setPatientId(e.target.value)}
-                  className="mt-2 w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-800/60 px-3 py-2 text-[13px] text-mist-100 outline-none focus:border-accent-500"
+                  className="mt-2 w-full rounded-xs border border-line bg-header px-3 py-2 text-sm text-ink-900 outline-none focus:border-primary-600"
                 >
                   {patients.slice(0, 50).map((p) => (
                     <option key={p.id} value={p.id}>
@@ -187,25 +187,25 @@ export function ReportsPage() {
             type="button"
             onClick={() => window.print()}
             disabled={!reportQuery.data}
-            className="rounded-[var(--radius-xs)] bg-accent-500 px-4 py-2.5 text-[13px] font-semibold text-charcoal-950 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-xs bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Print / Save as PDF
           </button>
         </div>
 
-        <p className="mt-3 text-[12.5px] text-mist-500">{report.description}</p>
+        <p className="mt-3 text-xs text-ink-600">{report.description}</p>
       </GlassPanel>
 
       {/* The document itself — this is what the printer receives. */}
       <div className="print-surface flex justify-center overflow-x-auto pb-4">
         {!ready ? (
-          <GlassPanel className="w-full p-8 text-center text-[13.5px] text-mist-500">
+          <GlassPanel className="w-full p-8 text-center text-sm text-ink-600">
             Choose a patient to generate this report.
           </GlassPanel>
         ) : reportQuery.isLoading ? (
           <Skeleton className="h-[297mm] w-[210mm] rounded-[2px]" />
         ) : reportQuery.isError ? (
-          <GlassPanel className="w-full p-8 text-center text-[13.5px] text-status-critical">
+          <GlassPanel className="w-full p-8 text-center text-sm text-critical">
             {(reportQuery.error as Error)?.message ?? 'Could not generate this report.'}
           </GlassPanel>
         ) : (

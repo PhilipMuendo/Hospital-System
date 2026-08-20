@@ -1,12 +1,48 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError } from '../lib/apiClient'
-import { GlassPanel } from '../components/atoms/GlassPanel'
-import { Badge } from '../components/atoms/Badge'
-import { Skeleton } from '../components/atoms/Skeleton'
-import { TableRow } from '../components/molecules/TableRow'
+import {
+  Alert,
+  Button,
+  DataTable,
+  Dialog,
+  EmptyState,
+  LoadingRows,
+  PageHeader,
+  Panel,
+  SearchInput,
+  Select,
+  StatusChip,
+  TBody,
+  TD,
+  TDPrimary,
+  TH,
+  THead,
+  TR,
+  TextInput,
+  TriageBadge,
+  useToast,
+} from '../components/ui'
 import { calculateAge, formatDate, formatDateTime } from '../lib/format'
+import { useHotkeys } from '../lib/useHotkeys'
 import { useQueueStream } from '../lib/useQueueStream'
+
+/**
+ * Reception.
+ *
+ * The busiest keyboard workflow in the building. A clerk doing 200 check-ins a
+ * day should never need the mouse:
+ *
+ *   /            focus the search box
+ *   ↑ ↓          move through results
+ *   Enter        select the highlighted patient, then confirm the check-in
+ *   Esc          clear the search / close the dialog
+ *
+ * The search covers the three identifiers a returning patient actually
+ * produces at the desk — OP number, National ID, phone — plus name, in one
+ * field, because asking a clerk to pick a search *type* first is a step that
+ * exists for the database's benefit, not theirs.
+ */
 
 interface Match {
   id: string
@@ -24,10 +60,8 @@ interface Match {
 
 interface Station {
   id: string
-  code: string
   name: string
   kind: string
-  room: string | null
 }
 
 interface OpenVisit {
@@ -41,21 +75,38 @@ interface OpenVisit {
   tickets: { token: string; status: string }[]
 }
 
-const VISIT_TYPES = ['REVISIT', 'NEW', 'FOLLOW_UP', 'EMERGENCY'] as const
+const VISIT_TYPES = [
+  { value: 'REVISIT', label: 'Revisit — has attended before' },
+  { value: 'NEW', label: 'New patient' },
+  { value: 'FOLLOW_UP', label: 'Follow-up appointment' },
+  { value: 'EMERGENCY', label: 'Emergency — triage as Red immediately' },
+]
+
+const PAYERS = [
+  { value: 'SELF_PAY', label: 'Self-pay' },
+  { value: 'SHA', label: 'SHA' },
+  { value: 'IMARA_HEALTH_ASSURANCE', label: 'Imara Health Assurance' },
+]
 
 export function ReceptionPage() {
   const queryClient = useQueryClient()
+  const toast = useToast()
+  const searchRef = useRef<HTMLInputElement>(null)
+
   const [search, setSearch] = useState('')
   const [debounced, setDebounced] = useState('')
+  const [highlight, setHighlight] = useState(0)
   const [selected, setSelected] = useState<Match | null>(null)
-  const [showRegister, setShowRegister] = useState(false)
+  const [registerOpen, setRegisterOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [issued, setIssued] = useState<{ token: string; visitNumber: string } | null>(null)
+  const [issued, setIssued] = useState<{ token: string; visitNumber: string; name: string } | null>(null)
 
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(search), 200)
+    const t = setTimeout(() => setDebounced(search), 180)
     return () => clearTimeout(t)
   }, [search])
+
+  useEffect(() => setHighlight(0), [debounced])
 
   const stationsQuery = useQuery({ queryKey: ['stations'], queryFn: () => api.get<Station[]>('/stations') })
   const triageStation = stationsQuery.data?.find((s) => s.kind === 'TRIAGE')
@@ -72,306 +123,373 @@ export function ReceptionPage() {
     refetchInterval: 30_000,
   })
 
-  useQueueStream({
-    onChange: () => queryClient.invalidateQueries({ queryKey: ['visits'] }),
-  })
+  useQueueStream({ onChange: () => queryClient.invalidateQueries({ queryKey: ['visits'] }) })
+
+  const matches = results.data ?? []
+
+  useHotkeys([
+    { combo: '/', description: 'Focus search', handler: () => searchRef.current?.focus() },
+    {
+      combo: 'ArrowDown',
+      whileTyping: true,
+      handler: () => setHighlight((h) => Math.min(h + 1, matches.length - 1)),
+      enabled: matches.length > 0 && !selected,
+    },
+    {
+      combo: 'ArrowUp',
+      whileTyping: true,
+      handler: () => setHighlight((h) => Math.max(h - 1, 0)),
+      enabled: matches.length > 0 && !selected,
+    },
+    {
+      combo: 'Enter',
+      whileTyping: true,
+      handler: () => {
+        const match = matches[highlight]
+        if (match && !match.hasOpenVisit) setSelected(match)
+      },
+      enabled: matches.length > 0 && !selected,
+    },
+    {
+      combo: 'Escape',
+      whileTyping: true,
+      handler: () => {
+        if (selected) setSelected(null)
+        else {
+          setSearch('')
+          setDebounced('')
+        }
+      },
+    },
+  ])
 
   const checkIn = useMutation({
     mutationFn: (body: Record<string, unknown>) => api.post<any>('/reception/check-in', body),
     onSuccess: (data) => {
       setError(null)
-      setIssued({ token: data.ticket.token, visitNumber: data.visit.visitNumber })
+      setIssued({
+        token: data.ticket.token,
+        visitNumber: data.visit.visitNumber,
+        name: selected?.name ?? '',
+      })
       setSelected(null)
       setSearch('')
+      setDebounced('')
       queryClient.invalidateQueries({ queryKey: ['visits'] })
+      toast.success(`Token ${data.ticket.token} issued`, selected?.name)
+      searchRef.current?.focus()
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : 'Check-in failed'),
+    onError: (e) => {
+      const message =
+        e instanceof ApiError
+          ? e.message
+          : 'Could not check this patient in. Check your connection and try again.'
+      setError(message)
+      toast.error('Check-in failed', message)
+    },
   })
 
   return (
-    <div className="flex flex-col gap-6">
-      {issued && (
-        <GlassPanel className="border border-accent-500/30 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-mist-500">Token issued</p>
-              <p className="mt-1 font-mono text-[38px] font-bold leading-none text-accent-400">{issued.token}</p>
-              <p className="mt-1.5 text-[12.5px] text-mist-500">
-                Visit {issued.visitNumber} · direct the patient to the triage waiting area
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="rounded-[var(--radius-xs)] bg-accent-500 px-4 py-2.5 text-[13px] font-semibold text-charcoal-950 hover:opacity-90"
-              >
+    <>
+      <PageHeader
+        title="Reception"
+        subtitle="Find the patient, confirm their details, issue a token."
+        meta={
+          <>
+            <span>
+              <kbd className="rounded-xs border border-line-strong bg-header px-1 font-mono text-2xs">/</kbd> search
+            </span>
+            <span>
+              <kbd className="rounded-xs border border-line-strong bg-header px-1 font-mono text-2xs">↑↓</kbd> move
+            </span>
+            <span>
+              <kbd className="rounded-xs border border-line-strong bg-header px-1 font-mono text-2xs">Enter</kbd> select
+            </span>
+          </>
+        }
+        actions={
+          <Button variant="secondary" onClick={() => setRegisterOpen(true)}>
+            Register new patient
+          </Button>
+        }
+      />
+
+      <div className="flex flex-col gap-4 p-4">
+        {issued && (
+          <Alert
+            tone="stable"
+            title={`Token ${issued.token} issued to ${issued.name}`}
+            onDismiss={() => setIssued(null)}
+            action={
+              <Button size="sm" variant="secondary" onClick={() => window.print()}>
                 Print token
-              </button>
-              <button
-                type="button"
-                onClick={() => setIssued(null)}
-                className="rounded-[var(--radius-xs)] border border-white/10 px-4 py-2.5 text-[13px] text-mist-300 hover:text-mist-100"
-              >
-                Next patient
-              </button>
-            </div>
-          </div>
-        </GlassPanel>
-      )}
-
-      {error && (
-        <div className="rounded-[var(--radius-sm)] border border-status-critical/30 bg-status-critical/10 px-4 py-3 text-[13px] text-status-critical">
-          {error}
-        </div>
-      )}
-
-      <GlassPanel className="p-6">
-        <h2 className="text-[17px] font-semibold text-mist-50">Check in a patient</h2>
-        <p className="mt-1 text-[12.5px] text-mist-500">
-          Search by OP number, National ID, phone or name. Register only if there is genuinely no match.
-        </p>
-
-        <input
-          autoFocus
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value)
-            setSelected(null)
-          }}
-          placeholder="OP/2026/00123 · 27650312 · 0722118904 · Otieno"
-          className="mt-4 w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-800/60 px-4 py-3 text-[15px] text-mist-100 outline-none placeholder:text-mist-600 focus:border-accent-500"
-        />
-
-        {debounced.length >= 3 && (
-          <div className="mt-4">
-            {results.isLoading ? (
-              <Skeleton className="h-28 rounded-[var(--radius-sm)]" />
-            ) : (results.data ?? []).length === 0 ? (
-              <div className="rounded-[var(--radius-sm)] border border-dashed border-white/8 px-4 py-6 text-center">
-                <p className="text-[13px] text-mist-500">No patient matches “{debounced}”.</p>
-                <button
-                  type="button"
-                  onClick={() => setShowRegister(true)}
-                  className="mt-3 rounded-[var(--radius-xs)] bg-accent-500 px-4 py-2 text-[13px] font-semibold text-charcoal-950 hover:opacity-90"
-                >
-                  Register as a new patient
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1.5">
-                {(results.data ?? []).map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setSelected(m)}
-                    className={`flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-xs)] border px-4 py-3 text-left transition-colors ${
-                      selected?.id === m.id
-                        ? 'border-accent-500/50 bg-accent-500/10'
-                        : 'border-white/6 bg-surface-800/50 hover:border-white/12'
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-[14px] text-mist-50">{m.name}</p>
-                      <p className="truncate text-[11.5px] text-mist-500">
-                        {m.opNumber ?? 'No OP number'} · {calculateAge(m.dob)}y {m.sex.toLowerCase()}
-                        {m.phone ? ` · ${m.phone}` : ''}
-                        {m.lastVisitAt ? ` · last seen ${formatDate(m.lastVisitAt)}` : ' · never attended'}
-                      </p>
-                    </div>
-                    {m.hasOpenVisit && <Badge status="warning">ALREADY CHECKED IN</Badge>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {selected && !selected.hasOpenVisit && triageStation && (
-          <CheckInForm
-            patient={selected}
-            stationId={triageStation.id}
-            pending={checkIn.isPending}
-            onSubmit={(body) => checkIn.mutate({ ...body, patientId: selected.id })}
-          />
-        )}
-        {selected?.hasOpenVisit && (
-          <p className="mt-4 rounded-[var(--radius-sm)] border border-status-warning/30 bg-status-warning/10 px-4 py-3 text-[13px] text-status-warning">
-            {selected.name} already has an open visit today. Close it before checking them in again.
-          </p>
-        )}
-      </GlassPanel>
-
-      {showRegister && (
-        <RegisterForm
-          onClose={() => setShowRegister(false)}
-          onRegistered={(patient) => {
-            setShowRegister(false)
-            setSelected({ ...patient, hasOpenVisit: false, lastVisitAt: null } as Match)
-            setSearch(patient.name)
-          }}
-        />
-      )}
-
-      <GlassPanel className="p-6">
-        <h2 className="text-[17px] font-semibold text-mist-50">Currently in the building</h2>
-        <div className="mt-4 max-h-[380px] overflow-y-auto pr-1">
-          <TableRow
-            columns="1.3fr 1fr 1fr 0.8fr 0.8fr"
-            className="text-[11px] font-medium uppercase tracking-wide text-mist-500"
+              </Button>
+            }
           >
-            <span>Patient</span>
-            <span>Visit</span>
-            <span>Waiting at</span>
-            <span>Token</span>
-            <span>Arrived</span>
-          </TableRow>
-          {openVisits.isLoading ? (
-            <Skeleton className="mt-2 h-40 rounded-[var(--radius-sm)]" />
-          ) : (openVisits.data ?? []).length === 0 ? (
-            <p className="mt-4 rounded-[var(--radius-sm)] border border-dashed border-white/8 px-4 py-6 text-center text-[13px] text-mist-600">
-              Nobody is currently checked in.
-            </p>
-          ) : (
-            (openVisits.data ?? []).map((v) => (
-              <TableRow key={v.id} columns="1.3fr 1fr 1fr 0.8fr 0.8fr">
-                <div className="min-w-0">
-                  <p className="truncate text-[13.5px] text-mist-100">{v.patient.name}</p>
-                  <p className="truncate text-[11px] text-mist-600">{v.patient.opNumber ?? '—'}</p>
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate font-mono text-[11.5px] text-mist-400">{v.visitNumber}</p>
-                  {v.acuity && <AcuityChip acuity={v.acuity} />}
-                </div>
-                <span className="truncate text-[12.5px] text-mist-400">{v.currentStation?.name ?? '—'}</span>
-                <span className="font-mono text-[13px] tabular text-mist-100">{v.tickets[0]?.token ?? '—'}</span>
-                <span className="text-[12px] text-mist-500">{formatDateTime(v.arrivedAt)}</span>
-              </TableRow>
-            ))
-          )}
+            Visit {issued.visitNumber}. Direct the patient to the triage waiting area.
+          </Alert>
+        )}
+
+        {error && (
+          <Alert tone="critical" title="Check-in failed" onDismiss={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <Panel title="Find patient" description="OP number, National ID, phone or name">
+            <SearchInput
+              ref={searchRef}
+              label="Search for a patient"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setSelected(null)
+              }}
+              onClear={() => {
+                setSearch('')
+                setDebounced('')
+              }}
+              placeholder="OP/2026/00123 · 27650312 · 0722118904 · Otieno"
+              autoFocus
+              className="text-md"
+            />
+
+            <div className="mt-3">
+              {debounced.trim().length < 3 ? (
+                <p className="px-1 py-6 text-center text-sm text-ink-600">
+                  Type at least 3 characters to search.
+                </p>
+              ) : results.isLoading ? (
+                <LoadingRows rows={3} columns={2} />
+              ) : matches.length === 0 ? (
+                <EmptyState
+                  title={`No patient matches “${debounced}”`}
+                  description="Check the spelling, or register them as a new patient."
+                  action={
+                    <Button variant="primary" onClick={() => setRegisterOpen(true)}>
+                      Register new patient
+                    </Button>
+                  }
+                />
+              ) : (
+                <ul className="divide-y divide-line border border-line">
+                  {matches.map((m, i) => (
+                    <li key={m.id}>
+                      <button
+                        type="button"
+                        onClick={() => !m.hasOpenVisit && setSelected(m)}
+                        onMouseEnter={() => setHighlight(i)}
+                        disabled={m.hasOpenVisit}
+                        aria-current={selected?.id === m.id ? 'true' : undefined}
+                        className={[
+                          'flex w-full items-center gap-3 px-3 py-3 text-left transition-colors',
+                          m.hasOpenVisit ? 'cursor-not-allowed bg-neutral-bg' : 'hover:bg-primary-50',
+                          i === highlight && !m.hasOpenVisit ? 'bg-primary-50 ring-1 ring-inset ring-primary-600' : '',
+                          selected?.id === m.id ? 'bg-primary-50' : '',
+                        ].join(' ')}
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-md font-semibold text-ink-900">{m.name}</span>
+                          <span className="mt-0.5 block text-xs text-ink-600">
+                            {m.opNumber ?? 'No OP number'} · {calculateAge(m.dob)}
+                            {m.sex === 'MALE' ? 'M' : m.sex === 'FEMALE' ? 'F' : 'I'}
+                            {m.phone ? ` · ${m.phone}` : ''}
+                            {m.lastVisitAt ? ` · last seen ${formatDate(m.lastVisitAt)}` : ' · never attended'}
+                          </span>
+                        </span>
+                        {m.hasOpenVisit && <StatusChip tone="warning">Already checked in</StatusChip>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </Panel>
+
+          <Panel
+            title={selected ? 'Confirm check-in' : 'Check-in'}
+            description={selected ? undefined : 'Select a patient from the search results.'}
+          >
+            {!selected ? (
+              <p className="py-12 text-center text-sm text-ink-600">
+                No patient selected.
+              </p>
+            ) : !triageStation ? (
+              <Alert tone="critical" title="No triage station configured">
+                Ask an administrator to add a triage station before checking patients in.
+              </Alert>
+            ) : (
+              <CheckInForm
+                patient={selected}
+                stationId={triageStation.id}
+                pending={checkIn.isPending}
+                onCancel={() => setSelected(null)}
+                onSubmit={(body) => checkIn.mutate({ ...body, patientId: selected.id })}
+              />
+            )}
+          </Panel>
         </div>
-      </GlassPanel>
-    </div>
+
+        <Panel title="Currently in the building" description={`${openVisits.data?.length ?? 0} open visits`} flush>
+          {openVisits.isLoading ? (
+            <div className="p-4">
+              <LoadingRows rows={4} columns={5} />
+            </div>
+          ) : (openVisits.data ?? []).length === 0 ? (
+            <EmptyState title="Nobody is currently checked in" />
+          ) : (
+            <DataTable caption="Patients currently checked in">
+              <THead>
+                <TR>
+                  <TH width="28%">Patient</TH>
+                  <TH>Visit</TH>
+                  <TH>Triage</TH>
+                  <TH>Waiting at</TH>
+                  <TH>Token</TH>
+                  <TH align="right">Arrived</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {(openVisits.data ?? []).map((v) => (
+                  <TR key={v.id}>
+                    <TDPrimary secondary={v.patient.opNumber ?? '—'}>{v.patient.name}</TDPrimary>
+                    <TD className="font-mono text-xs tabular">{v.visitNumber}</TD>
+                    <TD>
+                      <TriageBadge acuity={v.acuity} showTarget={false} />
+                    </TD>
+                    <TD>{v.currentStation?.name ?? '—'}</TD>
+                    <TD className="font-mono text-md font-semibold tabular text-ink-900">
+                      {v.tickets[0]?.token ?? '—'}
+                    </TD>
+                    <TD align="right" className="text-xs">
+                      {formatDateTime(v.arrivedAt)}
+                    </TD>
+                  </TR>
+                ))}
+              </TBody>
+            </DataTable>
+          )}
+        </Panel>
+      </div>
+
+      <RegisterDialog
+        open={registerOpen}
+        onClose={() => setRegisterOpen(false)}
+        onRegistered={(patient) => {
+          setRegisterOpen(false)
+          setSelected({ ...patient, hasOpenVisit: false, lastVisitAt: null } as Match)
+        }}
+      />
+    </>
   )
 }
 
-export function AcuityChip({ acuity }: { acuity: string }) {
-  const map: Record<string, { bg: string; label: string }> = {
-    RED: { bg: '#dc2626', label: 'RED · immediate' },
-    ORANGE: { bg: '#ea580c', label: 'ORANGE · <10 min' },
-    YELLOW: { bg: '#ca8a04', label: 'YELLOW · <60 min' },
-    GREEN: { bg: '#16a34a', label: 'GREEN · routine' },
-    BLUE: { bg: '#2563eb', label: 'BLUE' },
-  }
-  const tone = map[acuity] ?? { bg: '#525252', label: acuity }
-  return (
-    <span
-      className="mt-0.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-      style={{ background: tone.bg }}
-    >
-      {tone.label}
-    </span>
-  )
-}
+/* ------------------------------------------------------------------ */
 
 function CheckInForm({
   patient,
   stationId,
   pending,
   onSubmit,
+  onCancel,
 }: {
   patient: Match
   stationId: string
   pending: boolean
   onSubmit: (body: Record<string, unknown>) => void
+  onCancel: () => void
 }) {
-  const [type, setType] = useState<(typeof VISIT_TYPES)[number]>(patient.opNumber ? 'REVISIT' : 'NEW')
+  const [type, setType] = useState(patient.opNumber ? 'REVISIT' : 'NEW')
   const [complaint, setComplaint] = useState('')
   const [payer, setPayer] = useState('SELF_PAY')
   const [shaNumber, setShaNumber] = useState('')
 
+  function submit(e?: React.FormEvent) {
+    e?.preventDefault()
+    onSubmit({
+      type,
+      chiefComplaint: complaint || undefined,
+      payer,
+      shaNumber: payer === 'SHA' ? shaNumber || undefined : undefined,
+      stationId,
+    })
+  }
+
   return (
-    <div className="mt-5 rounded-[var(--radius-sm)] border border-white/8 bg-surface-800/40 p-5">
-      <p className="text-[13.5px] font-medium text-mist-50">Check in {patient.name}</p>
-
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <Field label="Visit type">
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as typeof type)}
-            className="w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-900/70 px-3 py-2 text-[13px] text-mist-100 outline-none focus:border-accent-500"
-          >
-            {VISIT_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t === 'EMERGENCY' ? 'EMERGENCY — triage as RED immediately' : t.replace('_', ' ')}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Payer">
-          <select
-            value={payer}
-            onChange={(e) => setPayer(e.target.value)}
-            className="w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-900/70 px-3 py-2 text-[13px] text-mist-100 outline-none focus:border-accent-500"
-          >
-            <option value="SELF_PAY">Self-Pay</option>
-            <option value="SHA">SHA</option>
-            <option value="IMARA_HEALTH_ASSURANCE">Imara Health Assurance</option>
-          </select>
-        </Field>
-
-        {payer === 'SHA' && (
-          <Field label="SHA number">
-            <input
-              value={shaNumber}
-              onChange={(e) => setShaNumber(e.target.value)}
-              placeholder="SHA membership number"
-              className="w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-900/70 px-3 py-2 text-[13px] text-mist-100 outline-none placeholder:text-mist-600 focus:border-accent-500"
-            />
-          </Field>
-        )}
-
-        <Field label="Presenting complaint">
-          <input
-            value={complaint}
-            onChange={(e) => setComplaint(e.target.value)}
-            placeholder="In the patient's own words"
-            className="w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-900/70 px-3 py-2 text-[13px] text-mist-100 outline-none placeholder:text-mist-600 focus:border-accent-500"
-          />
-        </Field>
+    <form onSubmit={submit} onKeyDown={(e) => e.key === 'Escape' && onCancel()}>
+      {/* Identity restated before the action, so confirming is a decision
+          rather than a reflex. */}
+      <div className="border border-line-strong bg-header px-3 py-2.5">
+        <p className="text-lg font-semibold text-ink-900">{patient.name}</p>
+        <p className="mt-0.5 text-xs text-ink-600">
+          {patient.opNumber ?? 'New patient'} · {calculateAge(patient.dob)}
+          {patient.sex === 'MALE' ? 'M' : patient.sex === 'FEMALE' ? 'F' : 'I'}
+          {patient.nationalId ? ` · ID ${patient.nationalId}` : ''}
+        </p>
       </div>
 
-      {type === 'EMERGENCY' && (
-        <p className="mt-3 rounded-[var(--radius-xs)] border border-status-critical/30 bg-status-critical/10 px-3 py-2 text-[12.5px] text-status-critical">
-          This patient will be placed at the front of every queue immediately, ahead of formal triage.
-        </p>
-      )}
+      <div className="mt-4 flex flex-col gap-4">
+        <Select
+          label="Visit type"
+          required
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          options={VISIT_TYPES}
+        />
 
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() =>
-          onSubmit({
-            type,
-            chiefComplaint: complaint || undefined,
-            payer,
-            shaNumber: payer === 'SHA' ? shaNumber || undefined : undefined,
-            stationId,
-          })
-        }
-        className="mt-4 rounded-[var(--radius-xs)] bg-accent-500 px-5 py-2.5 text-[13px] font-semibold text-charcoal-950 hover:opacity-90 disabled:opacity-40"
-      >
-        {pending ? 'Issuing token…' : 'Check in & issue token'}
-      </button>
-    </div>
+        {type === 'EMERGENCY' && (
+          <Alert tone="critical" title="This places the patient ahead of every queue">
+            They will be seen before all other patients, ahead of formal triage.
+          </Alert>
+        )}
+
+        <Select
+          label="Payer"
+          required
+          value={payer}
+          onChange={(e) => setPayer(e.target.value)}
+          options={PAYERS}
+        />
+
+        {payer === 'SHA' && (
+          <TextInput
+            label="SHA membership number"
+            value={shaNumber}
+            onChange={(e) => setShaNumber(e.target.value)}
+            hint="Checked against SHA before the visit, so a shortfall is not discovered at discharge."
+          />
+        )}
+
+        <TextInput
+          label="Presenting complaint"
+          value={complaint}
+          onChange={(e) => setComplaint(e.target.value)}
+          placeholder="In the patient's own words"
+          hint="Optional. The triage nurse will confirm it."
+        />
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        <Button type="submit" variant="primary" size="lg" loading={pending} loadingText="Issuing token…">
+          Check in &amp; issue token
+        </Button>
+        <Button type="button" variant="ghost" size="lg" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </form>
   )
 }
 
-function RegisterForm({
+/* ------------------------------------------------------------------ */
+
+function RegisterDialog({
+  open,
   onClose,
   onRegistered,
 }: {
+  open: boolean
   onClose: () => void
   onRegistered: (patient: any) => void
 }) {
@@ -385,6 +503,7 @@ function RegisterForm({
     nextOfKinPhone: '',
     nextOfKinRelation: 'Spouse',
   })
+  const [touched, setTouched] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const register = useMutation({
@@ -394,85 +513,155 @@ function RegisterForm({
         phone: form.phone || undefined,
         nationalId: form.nationalId || undefined,
       }),
-    onSuccess: onRegistered,
-    onError: (e) => setError(e instanceof ApiError ? e.message : 'Registration failed'),
+    onSuccess: (patient) => {
+      setForm({
+        name: '',
+        dob: '',
+        sex: 'FEMALE',
+        phone: '',
+        nationalId: '',
+        nextOfKinName: '',
+        nextOfKinPhone: '',
+        nextOfKinRelation: 'Spouse',
+      })
+      setTouched(false)
+      onRegistered(patient)
+    },
+    onError: (e) =>
+      setError(e instanceof ApiError ? e.message : 'Could not register this patient. Try again.'),
   })
 
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) =>
     setForm((f) => ({ ...f, [k]: e.target.value }))
 
+  const required = ['name', 'dob', 'nextOfKinName', 'nextOfKinPhone'] as const
+  const valid = required.every((k) => form[k].trim().length > 0)
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setTouched(true)
+    if (valid) register.mutate()
+  }
+
   return (
-    <GlassPanel className="p-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-[17px] font-semibold text-mist-50">Register a new patient</h2>
-        <button type="button" onClick={onClose} className="text-[13px] text-mist-500 hover:text-mist-200">
-          Cancel
-        </button>
-      </div>
-
-      {error && <p className="mt-3 text-[13px] text-status-critical">{error}</p>}
-
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <Field label="Full name *">
-          <Input value={form.name} onChange={set('name')} placeholder="Three names as on the ID" />
-        </Field>
-        <Field label="Date of birth *">
-          <Input type="date" value={form.dob} onChange={set('dob')} />
-        </Field>
-        <Field label="Sex *">
-          <select
-            value={form.sex}
-            onChange={set('sex')}
-            className="w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-900/70 px-3 py-2 text-[13px] text-mist-100 outline-none focus:border-accent-500"
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="Register new patient"
+      description="Only register someone with no existing record. Search first."
+      width="lg"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setTouched(true)
+              if (valid) register.mutate()
+            }}
+            loading={register.isPending}
+            loadingText="Registering…"
           >
-            <option value="FEMALE">Female</option>
-            <option value="MALE">Male</option>
-            <option value="INTERSEX">Intersex</option>
-          </select>
-        </Field>
-        <Field label="Phone">
-          <Input value={form.phone} onChange={set('phone')} placeholder="0722 118 904" />
-        </Field>
-        <Field label="National ID">
-          <Input value={form.nationalId} onChange={set('nationalId')} placeholder="Leave blank for minors" />
-        </Field>
-        <Field label="Next of kin name *">
-          <Input value={form.nextOfKinName} onChange={set('nextOfKinName')} />
-        </Field>
-        <Field label="Next of kin phone *">
-          <Input value={form.nextOfKinPhone} onChange={set('nextOfKinPhone')} />
-        </Field>
-        <Field label="Relationship *">
-          <Input value={form.nextOfKinRelation} onChange={set('nextOfKinRelation')} />
-        </Field>
-      </div>
+            Register &amp; issue OP number
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={submit} noValidate>
+        {error && (
+          <div className="mb-4">
+            <Alert tone="critical" title="Registration failed" onDismiss={() => setError(null)}>
+              {error}
+            </Alert>
+          </div>
+        )}
 
-      <button
-        type="button"
-        disabled={register.isPending || !form.name || !form.dob || !form.nextOfKinName || !form.nextOfKinPhone}
-        onClick={() => register.mutate()}
-        className="mt-5 rounded-[var(--radius-xs)] bg-accent-500 px-5 py-2.5 text-[13px] font-semibold text-charcoal-950 hover:opacity-90 disabled:opacity-40"
-      >
-        {register.isPending ? 'Registering…' : 'Register & issue OP number'}
-      </button>
-    </GlassPanel>
+        <fieldset className="border-0 p-0">
+          <legend className="mb-2 text-2xs font-bold uppercase tracking-wide text-ink-600">
+            Patient details
+          </legend>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextInput
+              autoFocus
+              label="Full name"
+              required
+              value={form.name}
+              onChange={set('name')}
+              placeholder="Three names, as on the ID"
+              error={touched && !form.name ? 'Enter the full name' : undefined}
+              containerClassName="sm:col-span-2"
+            />
+            <TextInput
+              label="Date of birth"
+              type="date"
+              required
+              value={form.dob}
+              onChange={set('dob')}
+              error={touched && !form.dob ? 'Enter the date of birth' : undefined}
+            />
+            <Select
+              label="Sex"
+              required
+              value={form.sex}
+              onChange={set('sex')}
+              options={[
+                { value: 'FEMALE', label: 'Female' },
+                { value: 'MALE', label: 'Male' },
+                { value: 'INTERSEX', label: 'Intersex' },
+              ]}
+            />
+            <TextInput
+              label="Phone number"
+              type="tel"
+              inputMode="tel"
+              value={form.phone}
+              onChange={set('phone')}
+              placeholder="0722 118 904"
+              hint="Used for M-Pesa prompts and results."
+            />
+            <TextInput
+              label="National ID"
+              value={form.nationalId}
+              onChange={set('nationalId')}
+              hint="Leave blank for minors."
+            />
+          </div>
+        </fieldset>
+
+        <fieldset className="mt-5 border-0 p-0">
+          <legend className="mb-2 text-2xs font-bold uppercase tracking-wide text-ink-600">
+            Next of kin
+          </legend>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <TextInput
+              label="Name"
+              required
+              value={form.nextOfKinName}
+              onChange={set('nextOfKinName')}
+              error={touched && !form.nextOfKinName ? 'Required' : undefined}
+            />
+            <TextInput
+              label="Phone"
+              type="tel"
+              inputMode="tel"
+              required
+              value={form.nextOfKinPhone}
+              onChange={set('nextOfKinPhone')}
+              error={touched && !form.nextOfKinPhone ? 'Required' : undefined}
+            />
+            <TextInput label="Relationship" value={form.nextOfKinRelation} onChange={set('nextOfKinRelation')} />
+          </div>
+        </fieldset>
+
+        <button type="submit" className="sr-only">
+          Register
+        </button>
+      </form>
+    </Dialog>
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-mist-500">{label}</label>
-      {children}
-    </div>
-  )
-}
-
-function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      {...props}
-      className="w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-900/70 px-3 py-2 text-[13px] text-mist-100 outline-none placeholder:text-mist-600 focus:border-accent-500"
-    />
-  )
-}
+/** Re-exported for screens that show an acuity next to a patient. */
+export { TriageBadge as AcuityChip }

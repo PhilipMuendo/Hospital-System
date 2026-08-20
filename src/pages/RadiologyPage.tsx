@@ -106,7 +106,7 @@ export function RadiologyPage() {
       </div>
 
       {error && (
-        <div className="rounded-[var(--radius-sm)] border border-status-critical/30 bg-status-critical/10 px-4 py-3 text-[13px] text-status-critical">
+        <div className="rounded-sm border border-critical-line bg-critical-bg px-4 py-3 text-sm text-critical">
           {error}
         </div>
       )}
@@ -116,9 +116,9 @@ export function RadiologyPage() {
 
         <div className="mt-5 flex max-h-[620px] flex-col gap-3 overflow-y-auto pr-1">
           {worklist.isLoading ? (
-            <Skeleton className="h-56 rounded-[var(--radius-sm)]" />
+            <Skeleton className="h-56 rounded-sm" />
           ) : shown.length === 0 ? (
-            <p className="rounded-[var(--radius-sm)] border border-dashed border-white/8 px-4 py-10 text-center text-[13px] text-mist-600">
+            <p className="rounded-sm border border-dashed border-line px-4 py-10 text-center text-sm text-ink-500">
               Nothing in this queue.
             </p>
           ) : (
@@ -153,32 +153,32 @@ function PatientLine({ order }: { order: Order }) {
     <>
       <div className="flex flex-wrap items-center gap-2">
         <span
-          className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+          className="rounded-full px-2 py-0.5 text-2xs font-bold uppercase tracking-wide text-white"
           style={{ background: urgencyTone[order.urgency] }}
         >
           {order.urgency}
         </span>
-        <p className="text-[14px] font-medium text-mist-50">{order.procedure.name}</p>
-        <span className="rounded-full border border-white/10 px-2 py-0.5 font-mono text-[10.5px] text-mist-400">
+        <p className="text-sm font-medium text-ink-900">{order.procedure.name}</p>
+        <span className="rounded-full border border-line px-2 py-0.5 font-mono text-2xs text-ink-600">
           {order.procedure.modality}
         </span>
         {order.procedure.ionising && <Badge status="warning">IONISING</Badge>}
       </div>
-      <p className="mt-1 text-[12.5px] text-mist-400">
+      <p className="mt-1 text-xs text-ink-600">
         {order.patient.name} · {calculateAge(order.patient.dob)}y {order.patient.sex.toLowerCase()} ·{' '}
         {order.patient.ipNumber ?? order.patient.opNumber ?? '—'}
         {order.patient.bed ? ` · ${order.patient.bed}` : ''}
       </p>
-      <p className="mt-0.5 text-[11.5px] text-mist-600">
+      <p className="mt-0.5 text-2xs text-ink-500">
         Requested {formatDateTime(order.createdAt)} by {order.orderedBy.name}
       </p>
       {order.clinicalNotes && (
-        <p className="mt-1.5 rounded-[var(--radius-xs)] bg-surface-900/60 px-2.5 py-1.5 text-[12px] text-mist-300">
+        <p className="mt-1.5 rounded-xs bg-header px-2.5 py-1.5 text-xs text-ink-700">
           {order.clinicalNotes}
         </p>
       )}
       {order.procedure.preparation && (
-        <p className="mt-1 text-[11.5px] text-accent-400">Prep: {order.procedure.preparation}</p>
+        <p className="mt-1 text-2xs text-primary-700">Prep: {order.procedure.preparation}</p>
       )}
     </>
   )
@@ -202,12 +202,12 @@ function AcquireCard({
   const blocked = order.requiresPregnancyCheck && pregnancy !== 'NOT_PREGNANT'
 
   return (
-    <div className="rounded-[var(--radius-sm)] border border-white/6 bg-surface-800/50 p-4">
+    <div className="rounded-sm border border-line bg-header p-4">
       <PatientLine order={order} />
 
       {order.requiresPregnancyCheck && (
-        <div className="mt-3 rounded-[var(--radius-xs)] border border-status-warning/30 bg-status-warning/10 p-3">
-          <p className="text-[12px] font-semibold text-status-warning">
+        <div className="mt-3 rounded-xs border border-warning-line bg-warning-bg p-3">
+          <p className="text-xs font-semibold text-warning">
             Ionising exposure — pregnancy status required before acquisition
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -220,10 +220,10 @@ function AcquireCard({
                 key={value}
                 type="button"
                 onClick={() => setPregnancy(value)}
-                className={`rounded-[var(--radius-xs)] border px-3 py-1.5 text-[12px] transition-colors ${
+                className={`rounded-xs border px-3 py-1.5 text-xs transition-colors ${
                   pregnancy === value
-                    ? 'border-white/30 bg-white/10 text-mist-50'
-                    : 'border-white/10 text-mist-400 hover:text-mist-200'
+                    ? 'border-line bg-white/10 text-ink-900'
+                    : 'border-line text-ink-600 hover:text-ink-800'
                 }`}
               >
                 {label}
@@ -231,7 +231,7 @@ function AcquireCard({
             ))}
           </div>
           {pregnancy && pregnancy !== 'NOT_PREGNANT' && (
-            <p className="mt-2 text-[12px] text-status-critical">
+            <p className="mt-2 text-xs text-critical">
               Exposure must be withheld. Refer back to the requesting clinician.
             </p>
           )}
@@ -243,9 +243,9 @@ function AcquireCard({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Views taken, exposure factors…"
-          className="min-w-[220px] flex-1 rounded-[var(--radius-xs)] border border-white/10 bg-surface-900/70 px-3 py-2 text-[12.5px] text-mist-100 outline-none placeholder:text-mist-700 focus:border-accent-500"
+          className="min-w-[220px] flex-1 rounded-xs border border-line bg-header px-3 py-2 text-xs text-ink-900 outline-none placeholder:text-ink-500 focus:border-primary-600"
         />
-        <label className="flex items-center gap-1.5 text-[11.5px] text-mist-500">
+        <label className="flex items-center gap-1.5 text-2xs text-ink-600">
           Retakes
           <input
             type="number"
@@ -253,7 +253,7 @@ function AcquireCard({
             max={20}
             value={retakes}
             onChange={(e) => setRetakes(Number(e.target.value))}
-            className="w-14 rounded-[var(--radius-xs)] border border-white/10 bg-surface-900/70 px-2 py-2 font-mono text-[12.5px] tabular text-mist-100 outline-none focus:border-accent-500"
+            className="w-14 rounded-xs border border-line bg-header px-2 py-2 font-mono text-xs tabular text-ink-900 outline-none focus:border-primary-600"
           />
         </label>
         <button
@@ -267,7 +267,7 @@ function AcquireCard({
             })
           }
           title={blocked ? 'Record a negative pregnancy status before exposure' : undefined}
-          className="rounded-[var(--radius-xs)] bg-accent-500 px-4 py-2 text-[12.5px] font-semibold text-charcoal-950 hover:opacity-90 disabled:opacity-35"
+          className="rounded-xs bg-primary-600 px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-35"
         >
           Images acquired
         </button>
@@ -291,17 +291,17 @@ function ReportCard({
   const [impression, setImpression] = useState('')
 
   return (
-    <div className="rounded-[var(--radius-sm)] border border-white/6 bg-surface-800/50 p-4">
+    <div className="rounded-sm border border-line bg-header p-4">
       <PatientLine order={order} />
 
-      <p className="mt-2 text-[11.5px] text-mist-600">
+      <p className="mt-2 text-2xs text-ink-500">
         Acquired {order.performedAt ? formatDateTime(order.performedAt) : '—'}
         {order.performedBy ? ` by ${order.performedBy.name}` : ''}
         {order.retakeCount > 0 ? ` · ${order.retakeCount} retake(s)` : ''}
         {order.pregnancyStatus ? ` · pregnancy: ${order.pregnancyStatus.toLowerCase().replace('_', ' ')}` : ''}
       </p>
       {order.technicalNotes && (
-        <p className="mt-1 text-[12px] text-mist-400">Technique: {order.technicalNotes}</p>
+        <p className="mt-1 text-xs text-ink-600">Technique: {order.technicalNotes}</p>
       )}
 
       <div className="mt-3 flex flex-col gap-2">
@@ -310,26 +310,26 @@ function ReportCard({
           onChange={(e) => setFindings(e.target.value)}
           rows={3}
           placeholder="Findings — what is seen on the images"
-          className="w-full resize-y rounded-[var(--radius-xs)] border border-white/10 bg-surface-900/70 px-3 py-2 text-[12.5px] text-mist-100 outline-none placeholder:text-mist-700 focus:border-accent-500"
+          className="w-full resize-y rounded-xs border border-line bg-header px-3 py-2 text-xs text-ink-900 outline-none placeholder:text-ink-500 focus:border-primary-600"
         />
         <textarea
           value={impression}
           onChange={(e) => setImpression(e.target.value)}
           rows={2}
           placeholder="Impression — the conclusion that answers the clinical question"
-          className="w-full resize-y rounded-[var(--radius-xs)] border border-white/10 bg-surface-900/70 px-3 py-2 text-[12.5px] text-mist-100 outline-none placeholder:text-mist-700 focus:border-accent-500"
+          className="w-full resize-y rounded-xs border border-line bg-header px-3 py-2 text-xs text-ink-900 outline-none placeholder:text-ink-500 focus:border-primary-600"
         />
         <div className="flex items-center gap-2">
           <button
             type="button"
             disabled={!enabled || pending || findings.trim().length < 3 || impression.trim().length < 3}
             onClick={() => onReport({ findings: findings.trim(), impression: impression.trim() })}
-            className="rounded-[var(--radius-xs)] bg-accent-500 px-4 py-2 text-[12.5px] font-semibold text-charcoal-950 hover:opacity-90 disabled:opacity-35"
+            className="rounded-xs bg-primary-600 px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-35"
           >
             Sign report &amp; publish to chart
           </button>
           {!enabled && (
-            <span className="text-[11.5px] text-mist-600">
+            <span className="text-2xs text-ink-500">
               Reporting is a radiologist function — a radiographer cannot sign their own images.
             </span>
           )}
@@ -342,14 +342,14 @@ function ReportCard({
 function Stat({ label, value, tone }: { label: string; value: string; tone?: 'warning' | 'critical' }) {
   const color =
     tone === 'critical'
-      ? 'var(--color-status-critical)'
+      ? 'var(--color-critical)'
       : tone === 'warning'
-        ? 'var(--color-status-warning)'
-        : 'var(--color-mist-50)'
+        ? 'var(--color-warning)'
+        : 'var(--color-ink-900)'
   return (
     <GlassPanel className="p-4">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-mist-500">{label}</p>
-      <p className="mt-1.5 font-mono text-[19px] tabular font-semibold" style={{ color }}>
+      <p className="text-2xs font-medium uppercase tracking-wide text-ink-600">{label}</p>
+      <p className="mt-1.5 font-mono text-lg tabular font-semibold" style={{ color }}>
         {value}
       </p>
     </GlassPanel>

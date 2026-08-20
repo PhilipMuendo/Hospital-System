@@ -1,246 +1,319 @@
 @import 'tailwindcss';
 
 /* ==========================================================================
-   MERIDIAN DESIGN SYSTEM
-   "Soft Industrial" meets "Calm Clinical."
-   Deep charcoal navigation, cool operating-room greys, one muted teal accent.
+   UZIMA HMS — CLINICAL DESIGN SYSTEM
+
+   Built for a ward at 3am under fluorescent light, on an ageing workstation,
+   by someone eleven hours into a shift.
+
+   Governing decisions, and why:
+
+   1. LIGHT, HIGH-CONTRAST SURFACE. Wards are brightly lit. Dark UI washes out
+      under fluorescent glare and is measurably worse for sustained reading of
+      dense text. Dark is reserved for one screen — the corridor display board,
+      which is a 3-metre-viewing-distance product with different rules.
+
+   2. TYPOGRAPHY IS THE SAFETY LAYER. Clinical values outrank interface
+      chrome. Base is 15px; patient names, doses and results are larger. There
+      is a fixed scale — no arbitrary pixel values in components.
+
+   3. STATUS NEVER RELIES ON COLOUR ALONE. Every state carries colour + icon +
+      text. The previous palette had "warning" and the brand accent set to the
+      same teal, which meant a warning was indistinguishable from a button.
+
+   4. FLAT SURFACES, REAL BORDERS. Panels are separated by 1px rules, not
+      glass, blur and shadow. Borders survive glare and photocopying; blur does
+      not.
+
+   Print styling lives in print.css and is deliberately independent of these
+   tokens.
    ========================================================================== */
 
 @theme {
-  /* -- Typography ---------------------------------------------------- */
-  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
-  --font-mono: 'SF Mono', ui-monospace, 'SFMono-Regular', 'Inter Tight', Menlo, Consolas, monospace;
+  /* --- Type families ------------------------------------------------- */
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Tabular figures for anything a clinician compares vertically. */
+  --font-mono: 'SF Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 
-  /* -- Charcoal / navigation ------------------------------------------ */
-  --color-charcoal-950: #08090b;
-  --color-charcoal-900: #0c0e11;
-  --color-charcoal-800: #121417;
-  --color-charcoal-700: #191c20;
+  /* --- Type scale -----------------------------------------------------
+     Fixed steps. Components reference these, never raw pixels.
+     `clinical` sizes are for values a person reads to make a decision. */
+  --text-2xs: 0.75rem;      /* 12px — dense table meta only, never a value  */
+  --text-xs: 0.8125rem;     /* 13px — labels, captions                      */
+  --text-sm: 0.875rem;      /* 14px — secondary body                        */
+  --text-base: 0.9375rem;   /* 15px — body default                          */
+  --text-md: 1rem;          /* 16px — clinical body, table values           */
+  --text-lg: 1.125rem;      /* 18px — patient name, section titles          */
+  --text-xl: 1.375rem;      /* 22px — page title                            */
+  --text-2xl: 1.75rem;      /* 28px — large numerics (queue token, vitals)  */
+  --text-3xl: 2.25rem;      /* 36px — now-serving token                     */
 
-  /* -- Surface / operating-room greys ---------------------------------- */
-  --color-surface-900: #15171b;
-  --color-surface-800: #1b1e23;
-  --color-surface-700: #22252b;
-  --color-surface-600: #2a2d34;
-  --color-surface-500: #363940;
-  --color-surface-400: #494d56;
+  /* --- Neutral ramp ---------------------------------------------------
+     Cool grey. ink-900 on canvas is 16:1; ink-600 on canvas is 7.4:1, so
+     even "secondary" text clears WCAG AA comfortably. */
+  --color-canvas: #ffffff;
+  --color-sunken: #f4f6f8;   /* page background behind panels               */
+  --color-raised: #ffffff;   /* panel surface                               */
+  --color-header: #f8fafb;   /* table headers, section bars                 */
 
-  /* -- Mist / text on dark --------------------------------------------- */
-  --color-mist-50: #f4f5f6;
-  --color-mist-100: #e7e9eb;
-  --color-mist-200: #cdd1d6;
-  --color-mist-300: #aeb3ba;
-  --color-mist-400: #888e97;
-  --color-mist-500: #666b73;
-  --color-mist-600: #4a4e55;
+  --color-ink-900: #0f172a;  /* primary text, patient names                 */
+  --color-ink-800: #1e293b;
+  --color-ink-700: #334155;  /* body text                                   */
+  --color-ink-600: #475569;  /* secondary text — still AA on canvas         */
+  --color-ink-500: #64748b;  /* labels, meta                                */
+  --color-ink-400: #94a3b8;  /* disabled/placeholder only, never data       */
 
-  /* -- Accent: muted teal / cyan ---------------------------------------- */
-  --color-accent-200: #c3f0ea;
-  --color-accent-300: #93e0d6;
-  --color-accent-400: #63cec0;
-  --color-accent-500: #45b8ac;
-  --color-accent-600: #349a90;
-  --color-accent-700: #297a72;
+  --color-line-strong: #cbd5e1; /* table rules, input borders               */
+  --color-line: #e2e8f0;        /* panel borders, row dividers              */
+  --color-line-soft: #eef2f6;   /* zebra striping                           */
 
-  /* -- Status hues (muted, never clinical) ------------------------------ */
-  --color-status-healthy: #7cbe93;
-  --color-status-healthy-soft: #4d7a5c;
-  --color-status-warning: #45b8ac;
-  --color-status-warning-soft: #349a90;
-  --color-status-critical: #c97665;
-  --color-status-critical-soft: #9c5a4d;
+  /* --- Primary action -------------------------------------------------
+     A single restrained blue. Used for the primary action and nothing
+     else, so "blue" always means "this is the thing to press". */
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-600: #1d4ed8;
+  --color-primary-700: #1e40af;
+  --color-primary-800: #1e3a8a;
 
-  /* -- Motion ------------------------------------------------------------ */
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --ease-spring-soft: cubic-bezier(0.22, 1.12, 0.4, 1);
+  /* --- Clinical status -------------------------------------------------
+     Distinct hues, each paired with an icon and a text label in the UI.
+     Never used decoratively. */
+  --color-critical: #b91c1c;
+  --color-critical-bg: #fef2f2;
+  --color-critical-line: #fecaca;
 
-  /* -- Radii -------------------------------------------------------------- */
-  --radius-2xs: 6px;
-  --radius-xs: 10px;
-  --radius-sm: 14px;
-  --radius-md: 18px;
-  --radius-lg: 24px;
-  --radius-xl: 32px;
+  --color-warning: #b45309;      /* amber — NOT the brand colour            */
+  --color-warning-bg: #fffbeb;
+  --color-warning-line: #fde68a;
+
+  --color-stable: #15803d;
+  --color-stable-bg: #f0fdf4;
+  --color-stable-line: #bbf7d0;
+
+  --color-info: #0369a1;
+  --color-info-bg: #f0f9ff;
+  --color-info-line: #bae6fd;
+
+  --color-neutral-bg: #f1f5f9;
+  --color-neutral-line: #e2e8f0;
+
+  /* --- Triage (South African Triage Scale) -----------------------------
+     Prescribed colours — these are a clinical standard, not a palette
+     choice, so they sit outside the neutral system deliberately. */
+  --color-triage-red: #b91c1c;
+  --color-triage-orange: #c2410c;
+  --color-triage-yellow: #a16207;
+  --color-triage-green: #15803d;
+  --color-triage-blue: #1d4ed8;
+
+  /* --- Radii — restrained. Nothing is a pill except status chips. ------ */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  /* --- Spacing scale (4px base) --------------------------------------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* --- Elevation — two levels only, both subtle. ----------------------- */
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
+  --shadow-overlay: 0 8px 24px rgb(15 23 42 / 0.14);
 }
 
 /* ==========================================================================
-   Base
+   BASE
    ========================================================================== */
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 html {
-  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
-  min-height: 100svh;
-  background: var(--color-charcoal-950);
-  color: var(--color-mist-100);
+  background: var(--color-sunken);
+  color: var(--color-ink-700);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: var(--text-base);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  overflow-x: hidden;
 }
 
-#root {
-  min-height: 100svh;
-}
-
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   font-family: var(--font-display);
-  letter-spacing: -0.022em;
+  color: var(--color-ink-900);
   font-weight: 600;
+  letter-spacing: -0.011em;
   margin: 0;
-  color: var(--color-mist-50);
-}
-
-p {
-  margin: 0;
-}
-
-::selection {
-  background: color-mix(in srgb, var(--color-accent-500) 35%, transparent);
-  color: var(--color-mist-50);
-}
-
-/* Slim, quiet scrollbars everywhere */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-surface-500) transparent;
-}
-*::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-*::-webkit-scrollbar-thumb {
-  background: var(--color-surface-500);
-  border-radius: 999px;
-}
-*::-webkit-scrollbar-track {
-  background: transparent;
+  line-height: 1.25;
 }
 
 /* ==========================================================================
-   Noise texture — subtle film grain overlay so flat surfaces never read
-   as vector-flat. Applied via .texture-noise on any positioned surface.
+   FOCUS
+
+   A visible focus ring is a requirement, not a decoration. This system is
+   keyboard-driven; anyone who cannot see where they are cannot use it.
+   High-contrast and offset so it reads over any surface.
    ========================================================================== */
 
-.texture-noise {
-  position: relative;
-  isolation: isolate;
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-primary-600);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
 }
-.texture-noise::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0.035;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  border-radius: inherit;
+
+/* Mouse users do not get the ring; keyboard users always do. */
+:where(button, [role='button']):focus:not(:focus-visible) {
+  outline: none;
 }
 
 /* ==========================================================================
-   Glass morphism surfaces
+   UTILITIES
    ========================================================================== */
 
-.glass {
-  background: color-mix(in srgb, var(--color-surface-800) 68%, transparent);
-  backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
-  border: 1px solid color-mix(in srgb, white 8%, transparent);
-  box-shadow:
-    inset 0 1px 0 0 color-mix(in srgb, white 6%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, black 20%, transparent),
-    0 20px 60px -20px color-mix(in srgb, black 70%, transparent);
-}
-
-.glass-panel {
-  background: color-mix(in srgb, var(--color-surface-900) 78%, transparent);
-  backdrop-filter: blur(28px) saturate(160%);
-  -webkit-backdrop-filter: blur(28px) saturate(160%);
-  border: 1px solid color-mix(in srgb, white 7%, transparent);
-}
-
-/* Soft light bloom used behind hero numerals / rings */
-.bloom {
-  position: absolute;
-  border-radius: 999px;
-  filter: blur(60px);
-  pointer-events: none;
-}
-
-/* Inner-stroke elevation instead of drop shadows */
-.stroke-elevated {
-  box-shadow:
-    inset 0 1px 0 0 color-mix(in srgb, white 5%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, white 6%, transparent);
-}
-
-/* ==========================================================================
-   Motion primitives
-   ========================================================================== */
-
-@keyframes shimmer {
-  0% { background-position: -300% 0; }
-  100% { background-position: 300% 0; }
-}
-
-.skeleton {
-  background: linear-gradient(
-    100deg,
-    var(--color-surface-700) 30%,
-    var(--color-surface-600) 45%,
-    var(--color-surface-700) 60%
-  );
-  background-size: 300% 100%;
-  animation: shimmer 2.6s ease-in-out infinite;
-}
-
-@keyframes ambient-spin {
-  0% { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(180deg) scale(1.06); }
-  100% { transform: rotate(360deg) scale(1); }
-}
-
-.ambient-blob {
-  animation: ambient-spin 34s linear infinite;
-}
-
-@keyframes heartbeat-draw {
-  0% { stroke-dashoffset: 240; }
-  100% { stroke-dashoffset: 0; }
-}
-
-@keyframes fade-blur-in {
-  from {
-    opacity: 0;
-    transform: translateY(15px);
-    filter: blur(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
-  }
-}
-
-.mount-in {
-  animation: fade-blur-in 0.65s var(--ease-spring-soft) both;
-}
-
-/* Tabular numerals for surgeon lists / vitals */
+/* Tabular figures — mandatory anywhere numbers are compared down a column. */
 .tabular {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
+}
+
+/* Screen-reader-only text for icon-only controls and live regions. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Skip link — first tab stop on every page. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: var(--color-primary-600);
+  color: #fff;
+  padding: var(--space-3) var(--space-4);
+  font-weight: 600;
+}
+.skip-link:focus {
+  left: var(--space-4);
+  top: var(--space-4);
+}
+
+/* Loading placeholder. A slow, low-contrast pulse — present but not
+   attention-seeking, because a loading row is not clinical information. */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-line-soft) 25%,
+    var(--color-line) 37%,
+    var(--color-line-soft) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-shift 1.6s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-shift {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+/* ==========================================================================
+   MOTION
+
+   Almost invisible by design. Feedback and orientation only — no entrance
+   choreography, no floating, no blur reveals. A hospital system should feel
+   stable, and motion on a screen someone stares at for twelve hours is
+   fatigue, not delight.
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   FORM RESET
+
+   Native controls, restyled rather than replaced. A real <select> gets the
+   platform's keyboard behaviour, type-ahead and mobile picker for free —
+   all of which a custom dropdown has to reimplement and usually gets wrong.
+   ========================================================================== */
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* Number inputs: no spinners. They are a mis-click hazard on a dose field. */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ==========================================================================
+   SCROLLBARS — visible, so a scrollable region is discoverable.
+   ========================================================================== */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border-radius: 5px;
+  border: 2px solid var(--color-sunken);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
 }

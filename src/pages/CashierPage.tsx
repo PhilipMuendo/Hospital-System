@@ -7,6 +7,7 @@ import { Skeleton } from '../components/atoms/Skeleton'
 import { Checkbox } from '../components/atoms/Checkbox'
 import { formatDateTime, formatKES } from '../lib/format'
 import { MpesaCharge } from '../components/molecules/MpesaCharge'
+import { ReasonDialog } from '../components/ui'
 
 interface Line {
   id: string
@@ -58,6 +59,7 @@ export function CashierPage() {
   const [tendered, setTendered] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [receipt, setReceipt] = useState<{ receiptNumber: string; total: string; change: string | null } | null>(null)
+  const [waiving, setWaiving] = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 200)
@@ -121,12 +123,12 @@ export function CashierPage() {
   return (
     <div className="flex flex-col gap-6">
       {receipt && (
-        <GlassPanel className="border border-accent-500/30 p-5">
+        <GlassPanel className="border border-primary-200 p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-mist-500">Receipt issued</p>
-              <p className="mt-1 font-mono text-[26px] font-bold text-accent-400">{receipt.receiptNumber}</p>
-              <p className="mt-1 text-[13px] text-mist-400">
+              <p className="text-2xs font-medium uppercase tracking-wide text-ink-600">Receipt issued</p>
+              <p className="mt-1 font-mono text-xl font-bold text-primary-700">{receipt.receiptNumber}</p>
+              <p className="mt-1 text-sm text-ink-600">
                 {formatKES(receipt.total)} received
                 {receipt.change !== null && Number(receipt.change) > 0
                   ? ` · change ${formatKES(receipt.change)}`
@@ -137,14 +139,14 @@ export function CashierPage() {
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="rounded-[var(--radius-xs)] bg-accent-500 px-4 py-2.5 text-[13px] font-semibold text-charcoal-950 hover:opacity-90"
+                className="rounded-xs bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
               >
                 Print receipt
               </button>
               <button
                 type="button"
                 onClick={() => setReceipt(null)}
-                className="rounded-[var(--radius-xs)] border border-white/10 px-4 py-2.5 text-[13px] text-mist-300 hover:text-mist-100"
+                className="rounded-xs border border-line px-4 py-2.5 text-sm text-ink-700 hover:text-ink-900"
               >
                 Next
               </button>
@@ -154,7 +156,7 @@ export function CashierPage() {
       )}
 
       {error && (
-        <div className="rounded-[var(--radius-sm)] border border-status-critical/30 bg-status-critical/10 px-4 py-3 text-[13px] text-status-critical">
+        <div className="rounded-sm border border-critical-line bg-critical-bg px-4 py-3 text-sm text-critical">
           {error}
         </div>
       )}
@@ -162,12 +164,12 @@ export function CashierPage() {
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
         <div className="flex flex-col gap-6">
           <GlassPanel className="p-5">
-            <h2 className="text-[15px] font-semibold text-mist-50">Waiting at the cash office</h2>
+            <h2 className="text-base font-semibold text-ink-900">Waiting at the cash office</h2>
             <div className="mt-3 flex flex-col gap-1.5">
               {queue.isLoading ? (
-                <Skeleton className="h-24 rounded-[var(--radius-sm)]" />
+                <Skeleton className="h-24 rounded-sm" />
               ) : (queue.data ?? []).length === 0 ? (
-                <p className="rounded-[var(--radius-sm)] border border-dashed border-white/8 px-3 py-5 text-center text-[12.5px] text-mist-600">
+                <p className="rounded-sm border border-dashed border-line px-3 py-5 text-center text-xs text-ink-500">
                   Nobody queued.
                 </p>
               ) : (
@@ -179,26 +181,26 @@ export function CashierPage() {
                       setPatientId(q.patient.id)
                       setSelected(new Set())
                     }}
-                    className={`flex items-center gap-3 rounded-[var(--radius-xs)] border px-3 py-2.5 text-left ${
+                    className={`flex items-center gap-3 rounded-xs border px-3 py-2.5 text-left ${
                       patientId === q.patient.id
-                        ? 'border-accent-500/50 bg-accent-500/10'
-                        : 'border-white/6 bg-surface-800/50 hover:border-white/12'
+                        ? 'border-primary-200 bg-primary-600/10'
+                        : 'border-line bg-header hover:border-line'
                     }`}
                   >
-                    <span className="font-mono text-[15px] font-bold tabular text-accent-400">{q.token}</span>
-                    <span className="min-w-0 flex-1 truncate text-[13px] text-mist-200">{q.patient.name}</span>
+                    <span className="font-mono text-base font-bold tabular text-primary-700">{q.token}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-ink-800">{q.patient.name}</span>
                     {q.status === 'CALLED' && <Badge status="warning">CALLED</Badge>}
                   </button>
                 ))
               )}
             </div>
 
-            <div className="mt-4 border-t border-white/6 pt-3">
+            <div className="mt-4 border-t border-line pt-3">
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="…or search any patient"
-                className="w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-800/60 px-3 py-2 text-[13px] text-mist-100 outline-none placeholder:text-mist-600 focus:border-accent-500"
+                className="w-full rounded-xs border border-line bg-header px-3 py-2 text-sm text-ink-900 outline-none placeholder:text-ink-500 focus:border-primary-600"
               />
               {(results.data ?? []).slice(0, 5).map((m) => (
                 <button
@@ -208,7 +210,7 @@ export function CashierPage() {
                     setPatientId(m.id)
                     setSelected(new Set())
                   }}
-                  className="mt-1.5 block w-full truncate rounded-[var(--radius-xs)] border border-white/6 px-3 py-2 text-left text-[12.5px] text-mist-300 hover:border-white/12"
+                  className="mt-1.5 block w-full truncate rounded-xs border border-line px-3 py-2 text-left text-xs text-ink-700 hover:border-line"
                 >
                   {m.name} · {m.opNumber ?? m.ipNumber ?? '—'}
                 </button>
@@ -217,17 +219,17 @@ export function CashierPage() {
           </GlassPanel>
 
           <GlassPanel className="p-5">
-            <h2 className="text-[15px] font-semibold text-mist-50">Shift so far</h2>
+            <h2 className="text-base font-semibold text-ink-900">Shift so far</h2>
             <div className="mt-3 flex flex-col gap-1.5">
               {(shift.data?.byMethod ?? []).length === 0 ? (
-                <p className="text-[12.5px] text-mist-600">Nothing taken yet today.</p>
+                <p className="text-xs text-ink-500">Nothing taken yet today.</p>
               ) : (
                 (shift.data?.byMethod ?? []).map((m: any) => (
-                  <div key={m.method} className="flex items-center justify-between text-[13px]">
-                    <span className="text-mist-400">
-                      {m.method} <span className="text-mist-600">({m.count})</span>
+                  <div key={m.method} className="flex items-center justify-between text-sm">
+                    <span className="text-ink-600">
+                      {m.method} <span className="text-ink-500">({m.count})</span>
                     </span>
-                    <span className="font-mono tabular text-mist-100">{formatKES(m.total)}</span>
+                    <span className="font-mono tabular text-ink-900">{formatKES(m.total)}</span>
                   </div>
                 ))
               )}
@@ -237,29 +239,29 @@ export function CashierPage() {
 
         <GlassPanel className="p-6">
           {!patientId ? (
-            <p className="py-16 text-center text-[13.5px] text-mist-600">
+            <p className="py-16 text-center text-sm text-ink-500">
               Select a patient from the queue to take payment.
             </p>
           ) : account.isLoading || !view ? (
-            <Skeleton className="h-72 rounded-[var(--radius-sm)]" />
+            <Skeleton className="h-72 rounded-sm" />
           ) : (
             <>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-[18px] font-semibold text-mist-50">{view.patient.name}</h2>
-                  <p className="mt-0.5 text-[12.5px] text-mist-500">
+                  <h2 className="text-lg font-semibold text-ink-900">{view.patient.name}</h2>
+                  <p className="mt-0.5 text-xs text-ink-600">
                     {view.patient.opNumber ?? view.patient.ipNumber ?? '—'}
                     {view.visit ? ` · ${view.visit.visitNumber}` : ''}
                     {view.patient.phone ? ` · ${view.patient.phone}` : ''}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[11px] uppercase tracking-wide text-mist-600">Due now</p>
-                  <p className="font-mono text-[24px] font-bold tabular text-status-warning">
+                  <p className="text-2xs uppercase tracking-wide text-ink-500">Due now</p>
+                  <p className="font-mono text-xl font-bold tabular text-warning">
                     {formatKES(view.totals.dueNow)}
                   </p>
                   {view.totals.onInsurerCount > 0 && (
-                    <p className="mt-0.5 text-[11.5px] text-mist-500">
+                    <p className="mt-0.5 text-2xs text-ink-600">
                       {formatKES(view.totals.onInsurer)} billed to insurer
                     </p>
                   )}
@@ -267,46 +269,46 @@ export function CashierPage() {
               </div>
 
               {view.totals.onInsurerCount > 0 && (
-                <p className="mt-3 rounded-[var(--radius-xs)] border border-white/8 bg-surface-800/50 px-3 py-2 text-[12px] text-mist-400">
+                <p className="mt-3 rounded-xs border border-line bg-header px-3 py-2 text-xs text-ink-600">
                   {view.totals.onInsurerCount} line(s) are payable by SHA or an insurer and are not collected at
                   the window.
                 </p>
               )}
 
-              <p className="mt-5 text-[11px] font-medium uppercase tracking-wide text-mist-500">
+              <p className="mt-5 text-2xs font-medium uppercase tracking-wide text-ink-600">
                 Outstanding — self-pay
               </p>
               <div className="mt-2 flex max-h-[280px] flex-col gap-1.5 overflow-y-auto pr-1">
                 {payable.length === 0 ? (
-                  <p className="rounded-[var(--radius-sm)] border border-dashed border-white/8 px-3 py-6 text-center text-[12.5px] text-mist-600">
+                  <p className="rounded-sm border border-dashed border-line px-3 py-6 text-center text-xs text-ink-500">
                     Nothing outstanding at the window.
                   </p>
                 ) : (
                   payable.map((l) => (
                     <label
                       key={l.id}
-                      className="flex cursor-pointer items-center gap-3 rounded-[var(--radius-xs)] border border-white/6 bg-surface-800/50 px-3 py-2.5"
+                      className="flex cursor-pointer items-center gap-3 rounded-xs border border-line bg-header px-3 py-2.5"
                     >
                       <Checkbox checked={selected.has(l.id)} onChange={() => toggle(l.id)} />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] text-mist-100">{l.description}</span>
-                        <span className="block truncate font-mono text-[11px] text-mist-600">
+                        <span className="block truncate text-sm text-ink-900">{l.description}</span>
+                        <span className="block truncate font-mono text-2xs text-ink-500">
                           {l.code} · {formatDateTime(l.createdAt)}
                         </span>
                       </span>
-                      <span className="font-mono text-[13.5px] tabular text-mist-50">{formatKES(l.amount)}</span>
+                      <span className="font-mono text-sm tabular text-ink-900">{formatKES(l.amount)}</span>
                     </label>
                   ))
                 )}
               </div>
 
               {selectedLines.length > 0 && (
-                <div className="mt-4 rounded-[var(--radius-sm)] border border-white/8 bg-surface-800/40 p-4">
+                <div className="mt-4 rounded-sm border border-line bg-header p-4">
                   <div className="flex items-baseline justify-between">
-                    <span className="text-[13px] text-mist-400">
+                    <span className="text-sm text-ink-600">
                       {selectedLines.length} line(s) selected
                     </span>
-                    <span className="font-mono text-[20px] font-bold tabular text-mist-50">
+                    <span className="font-mono text-xl font-bold tabular text-ink-900">
                       {formatKES(selectedTotal)}
                     </span>
                   </div>
@@ -317,13 +319,13 @@ export function CashierPage() {
                       onChange={(e) => setTendered(e.target.value)}
                       placeholder="Cash tendered"
                       inputMode="decimal"
-                      className="w-36 rounded-[var(--radius-xs)] border border-white/10 bg-surface-900/70 px-3 py-2 font-mono text-[13px] tabular text-mist-100 outline-none placeholder:text-mist-700 focus:border-accent-500"
+                      className="w-36 rounded-xs border border-line bg-header px-3 py-2 font-mono text-sm tabular text-ink-900 outline-none placeholder:text-ink-500 focus:border-primary-600"
                     />
                     {change !== null && !Number.isNaN(change) && (
                       <span
-                        className="text-[13px]"
+                        className="text-sm"
                         style={{
-                          color: change < 0 ? 'var(--color-status-critical)' : 'var(--color-status-healthy)',
+                          color: change < 0 ? 'var(--color-critical)' : 'var(--color-stable)',
                         }}
                       >
                         {change < 0 ? `Short by ${formatKES(-change)}` : `Change ${formatKES(change)}`}
@@ -339,27 +341,23 @@ export function CashierPage() {
                           amountTendered: tendered ? Number(tendered) : undefined,
                         })
                       }
-                      className="rounded-[var(--radius-xs)] bg-accent-500 px-4 py-2 text-[13px] font-semibold text-charcoal-950 hover:opacity-90 disabled:opacity-35"
+                      className="rounded-xs bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-35"
                     >
                       Take cash
                     </button>
                     <button
                       type="button"
                       disabled={pay.isPending}
-                      onClick={() => {
-                        const reason = window.prompt('Reason for the waiver (required)')
-                        if (reason && reason.trim())
-                          pay.mutate({ lineIds: [...selected], method: 'WAIVER', reason: reason.trim() })
-                      }}
-                      className="rounded-[var(--radius-xs)] border border-white/10 px-3 py-2 text-[13px] text-mist-400 hover:text-mist-100"
+                      onClick={() => setWaiving(true)}
+                      className="rounded-xs border border-line px-3 py-2 text-sm text-ink-600 hover:text-ink-900"
                     >
                       Waive
                     </button>
                   </div>
 
                   {selectedLines.length === 1 && (
-                    <div className="mt-3 border-t border-white/6 pt-3">
-                      <p className="mb-1.5 text-[11.5px] text-mist-500">
+                    <div className="mt-3 border-t border-line pt-3">
+                      <p className="mb-1.5 text-2xs text-ink-600">
                         Or push an M-Pesa prompt — the line settles only when Safaricom confirms.
                       </p>
                       <MpesaCharge
@@ -378,6 +376,37 @@ export function CashierPage() {
           )}
         </GlassPanel>
       </div>
+
+      <ReasonDialog
+        open={waiving}
+        onClose={() => setWaiving(false)}
+        onConfirm={(reason) => {
+          pay.mutate({ lineIds: [...selected], method: 'WAIVER', reason })
+          setWaiving(false)
+        }}
+        title="Waive charges"
+        description="A waiver closes the line without money changing hands. It is reported separately from revenue and recorded against your account."
+        label="Reason for the waiver"
+        confirmLabel="Waive charges"
+        tone="danger"
+        pending={pay.isPending}
+        options={[
+          { value: 'Indigent patient', label: 'Indigent patient — unable to pay' },
+          { value: 'Hospital error', label: 'Hospital error — charged in error' },
+          { value: 'Goodwill', label: 'Goodwill / service recovery' },
+          { value: 'Staff or dependant', label: 'Staff or dependant benefit' },
+          { value: 'Duplicate charge', label: 'Duplicate charge' },
+          { value: 'Management approval', label: 'Management approval — see notes' },
+        ]}
+      >
+        <div className="border border-line-strong bg-header px-3 py-2.5">
+          <p className="text-sm text-ink-700">
+            <span className="font-semibold text-ink-900">{selectedLines.length}</span> line(s) totalling{' '}
+            <span className="font-mono font-semibold tabular text-ink-900">{formatKES(selectedTotal)}</span>
+          </p>
+          {view && <p className="mt-0.5 text-xs text-ink-600">{view.patient.name}</p>}
+        </div>
+      </ReasonDialog>
     </div>
   )
 }

@@ -8,8 +8,8 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="grid min-h-svh place-items-center bg-charcoal-950">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
+      <div className="grid min-h-svh place-items-center bg-sunken">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
       </div>
     )
   }

@@ -91,7 +91,7 @@ export function BillingPage() {
 
       <GlassPanel className="p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-[17px] font-semibold text-mist-50">Billing Ledger</h2>
+          <h2 className="text-md font-semibold text-ink-900">Billing Ledger</h2>
           <div className="flex flex-wrap gap-2">
             <Dropdown
               label="Status"
@@ -111,7 +111,7 @@ export function BillingPage() {
         <div className="mt-5 max-h-[440px] overflow-y-auto pr-1">
           <TableRow
             columns="1.7fr 1.2fr 0.7fr 0.8fr 0.7fr"
-            className="text-[11px] font-medium uppercase tracking-wide text-mist-500"
+            className="text-2xs font-medium uppercase tracking-wide text-ink-600"
           >
             <span>Description</span>
             <span>Patient</span>
@@ -121,30 +121,30 @@ export function BillingPage() {
           </TableRow>
 
           {billingQuery.isLoading ? (
-            <Skeleton className="mt-2 h-56 rounded-[var(--radius-sm)]" />
+            <Skeleton className="mt-2 h-56 rounded-sm" />
           ) : rows.length === 0 ? (
-            <p className="mt-4 rounded-[var(--radius-sm)] border border-dashed border-white/8 px-4 py-6 text-center text-[13px] text-mist-600">
+            <p className="mt-4 rounded-sm border border-dashed border-line px-4 py-6 text-center text-sm text-ink-500">
               No billing lines match this filter.
             </p>
           ) : (
             rows.map((r) => (
               <TableRow key={r.id} columns="1.7fr 1.2fr 0.7fr 0.8fr 0.7fr">
                 <div className="min-w-0">
-                  <p className="truncate text-[13.5px] text-mist-100">{r.description}</p>
-                  <p className="truncate text-[11.5px] text-mist-600">
+                  <p className="truncate text-sm text-ink-900">{r.description}</p>
+                  <p className="truncate text-2xs text-ink-500">
                     {r.code}
                     {r.mpesaReference ? ` · M-Pesa ${r.mpesaReference}` : ''}
                   </p>
                 </div>
                 <Link
                   to={`/patients?patient=${r.patient.id}`}
-                  className="min-w-0 text-[13px] text-mist-300 hover:text-accent-400"
+                  className="min-w-0 text-sm text-ink-700 hover:text-primary-700"
                 >
                   <span className="block truncate">{r.patient.name}</span>
-                  <span className="block truncate font-mono text-[11px] text-mist-600">{r.patient.ipNumber}</span>
+                  <span className="block truncate font-mono text-2xs text-ink-500">{r.patient.ipNumber}</span>
                 </Link>
-                <span className="text-[12.5px] text-mist-400">{payerLabel[r.payer] ?? r.payer}</span>
-                <span className="font-mono text-[13px] tabular text-mist-100">{formatKES(r.amount)}</span>
+                <span className="text-xs text-ink-600">{payerLabel[r.payer] ?? r.payer}</span>
+                <span className="font-mono text-sm tabular text-ink-900">{formatKES(r.amount)}</span>
                 <Badge status={statusTone[r.status]}>{r.status}</Badge>
               </TableRow>
             ))
@@ -153,15 +153,15 @@ export function BillingPage() {
       </GlassPanel>
 
       <GlassPanel className="p-6">
-        <h2 className="text-[17px] font-semibold text-mist-50">M-Pesa Transactions</h2>
-        <p className="mt-1 text-[12.5px] text-mist-500">
+        <h2 className="text-md font-semibold text-ink-900">M-Pesa Transactions</h2>
+        <p className="mt-1 text-xs text-ink-600">
           Reconcile these against the Safaricom paybill statement at close of business.
         </p>
 
         <div className="mt-5 max-h-[320px] overflow-y-auto pr-1">
           <TableRow
             columns="1fr 1.2fr 0.9fr 0.7fr 0.7fr"
-            className="text-[11px] font-medium uppercase tracking-wide text-mist-500"
+            className="text-2xs font-medium uppercase tracking-wide text-ink-600"
           >
             <span>Receipt</span>
             <span>Patient</span>
@@ -171,20 +171,20 @@ export function BillingPage() {
           </TableRow>
 
           {mpesaQuery.isLoading ? (
-            <Skeleton className="mt-2 h-40 rounded-[var(--radius-sm)]" />
+            <Skeleton className="mt-2 h-40 rounded-sm" />
           ) : (mpesaQuery.data ?? []).length === 0 ? (
-            <p className="mt-4 rounded-[var(--radius-sm)] border border-dashed border-white/8 px-4 py-6 text-center text-[13px] text-mist-600">
+            <p className="mt-4 rounded-sm border border-dashed border-line px-4 py-6 text-center text-sm text-ink-500">
               No M-Pesa transactions yet.
             </p>
           ) : (
             (mpesaQuery.data ?? []).map((t) => (
               <TableRow key={t.id} columns="1fr 1.2fr 0.9fr 0.7fr 0.7fr">
-                <span className="font-mono text-[12.5px] tabular text-mist-100">
+                <span className="font-mono text-xs tabular text-ink-900">
                   {t.mpesaReceiptNumber ?? '—'}
                 </span>
-                <span className="truncate text-[13px] text-mist-300">{t.patient?.name ?? '—'}</span>
-                <span className="font-mono text-[12px] tabular text-mist-500">{t.phone}</span>
-                <span className="font-mono text-[13px] tabular text-mist-100">{formatKES(t.amount)}</span>
+                <span className="truncate text-sm text-ink-700">{t.patient?.name ?? '—'}</span>
+                <span className="font-mono text-xs tabular text-ink-600">{t.phone}</span>
+                <span className="font-mono text-sm tabular text-ink-900">{formatKES(t.amount)}</span>
                 <div className="flex flex-col">
                   <Badge
                     status={
@@ -193,7 +193,7 @@ export function BillingPage() {
                   >
                     {t.status}
                   </Badge>
-                  <span className="mt-0.5 text-[10.5px] text-mist-600">
+                  <span className="mt-0.5 text-2xs text-ink-500">
                     {formatDateTime(t.transactionDate ?? t.createdAt)}
                   </span>
                 </div>
@@ -217,17 +217,17 @@ function StatCard({
 }) {
   const color =
     tone === 'healthy'
-      ? 'var(--color-status-healthy)'
+      ? 'var(--color-stable)'
       : tone === 'warning'
-        ? 'var(--color-status-warning)'
+        ? 'var(--color-warning)'
         : tone === 'critical'
-          ? 'var(--color-status-critical)'
-          : 'var(--color-mist-50)'
+          ? 'var(--color-critical)'
+          : 'var(--color-ink-900)'
 
   return (
     <GlassPanel className="p-4">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-mist-500">{label}</p>
-      <p className="mt-1.5 font-mono text-[19px] tabular font-semibold" style={{ color }}>
+      <p className="text-2xs font-medium uppercase tracking-wide text-ink-600">{label}</p>
+      <p className="mt-1.5 font-mono text-lg tabular font-semibold" style={{ color }}>
         {value}
       </p>
     </GlassPanel>

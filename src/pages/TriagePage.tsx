@@ -74,7 +74,7 @@ export function TriagePage() {
   })
 
   if (!triage) {
-    return <GlassPanel className="p-8 text-center text-[13.5px] text-mist-500">No triage station configured.</GlassPanel>
+    return <GlassPanel className="p-8 text-center text-sm text-ink-600">No triage station configured.</GlassPanel>
   }
 
   return (
@@ -82,8 +82,8 @@ export function TriagePage() {
       <GlassPanel className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-[17px] font-semibold text-mist-50">Triage queue</h2>
-            <p className="mt-1 text-[12.5px] text-mist-500">
+            <h2 className="text-md font-semibold text-ink-900">Triage queue</h2>
+            <p className="mt-1 text-xs text-ink-600">
               {(queue.data ?? []).length} waiting · ordered by arrival until assessed
             </p>
           </div>
@@ -91,7 +91,7 @@ export function TriagePage() {
             type="button"
             onClick={() => callNext.mutate()}
             disabled={callNext.isPending || (queue.data ?? []).length === 0}
-            className="rounded-[var(--radius-xs)] bg-accent-500 px-4 py-2.5 text-[13px] font-semibold text-charcoal-950 hover:opacity-90 disabled:opacity-35"
+            className="rounded-xs bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-35"
           >
             Call next
           </button>
@@ -99,9 +99,9 @@ export function TriagePage() {
 
         <div className="mt-5 flex max-h-[560px] flex-col gap-2 overflow-y-auto pr-1">
           {queue.isLoading ? (
-            <Skeleton className="h-52 rounded-[var(--radius-sm)]" />
+            <Skeleton className="h-52 rounded-sm" />
           ) : (queue.data ?? []).length === 0 ? (
-            <p className="rounded-[var(--radius-sm)] border border-dashed border-white/8 px-4 py-8 text-center text-[13px] text-mist-600">
+            <p className="rounded-sm border border-dashed border-line px-4 py-8 text-center text-sm text-ink-500">
               Nobody waiting for triage.
             </p>
           ) : (
@@ -110,25 +110,25 @@ export function TriagePage() {
                 key={q.id}
                 type="button"
                 onClick={() => setActive(q)}
-                className={`flex items-center gap-3 rounded-[var(--radius-xs)] border px-4 py-3 text-left transition-colors ${
+                className={`flex items-center gap-3 rounded-xs border px-4 py-3 text-left transition-colors ${
                   active?.id === q.id
-                    ? 'border-accent-500/50 bg-accent-500/10'
-                    : 'border-white/6 bg-surface-800/50 hover:border-white/12'
+                    ? 'border-primary-200 bg-primary-600/10'
+                    : 'border-line bg-header hover:border-line'
                 }`}
               >
-                <span className="font-mono text-[16px] font-bold tabular text-accent-400">{q.token}</span>
+                <span className="font-mono text-md font-bold tabular text-primary-700">{q.token}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13.5px] text-mist-50">{q.patient.name}</p>
-                  <p className="truncate text-[11.5px] text-mist-500">
+                  <p className="truncate text-sm text-ink-900">{q.patient.name}</p>
+                  <p className="truncate text-2xs text-ink-600">
                     {calculateAge(q.patient.dob)}y {q.patient.sex.toLowerCase()}
                     {q.chiefComplaint ? ` · ${q.chiefComplaint}` : ''}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className={`text-[12px] ${q.breaching ? 'text-status-critical' : 'text-mist-500'}`}>
+                  <p className={`text-xs ${q.breaching ? 'text-critical' : 'text-ink-600'}`}>
                     {q.waitMinutes}m
                   </p>
-                  {q.status === 'CALLED' && <p className="text-[10.5px] text-status-warning">called ×{q.callCount}</p>}
+                  {q.status === 'CALLED' && <p className="text-2xs text-warning">called ×{q.callCount}</p>}
                 </div>
               </button>
             ))
@@ -138,8 +138,8 @@ export function TriagePage() {
 
       <GlassPanel className="p-6">
         {!active ? (
-          <p className="py-16 text-center text-[13.5px] text-mist-600">
-            Select a patient, or press <span className="text-mist-300">Call next</span>.
+          <p className="py-16 text-center text-sm text-ink-500">
+            Select a patient, or press <span className="text-ink-700">Call next</span>.
           </p>
         ) : (
           <TriageForm
@@ -152,7 +152,7 @@ export function TriagePage() {
             }}
           />
         )}
-        {error && <p className="mt-3 text-[13px] text-status-critical">{error}</p>}
+        {error && <p className="mt-3 text-sm text-critical">{error}</p>}
       </GlassPanel>
     </div>
   )
@@ -200,8 +200,8 @@ function TriageForm({
     <>
       <div className="flex items-baseline justify-between gap-3">
         <div>
-          <h2 className="text-[17px] font-semibold text-mist-50">{entry.patient.name}</h2>
-          <p className="mt-0.5 text-[12.5px] text-mist-500">
+          <h2 className="text-md font-semibold text-ink-900">{entry.patient.name}</h2>
+          <p className="mt-0.5 text-xs text-ink-600">
             {entry.token} · {entry.visitNumber} · {calculateAge(entry.patient.dob)}y{' '}
             {entry.patient.sex.toLowerCase()}
           </p>
@@ -210,12 +210,12 @@ function TriageForm({
       </div>
 
       {entry.chiefComplaint && (
-        <p className="mt-3 rounded-[var(--radius-xs)] bg-surface-800/60 px-3 py-2 text-[13px] text-mist-300">
+        <p className="mt-3 rounded-xs bg-header px-3 py-2 text-sm text-ink-700">
           “{entry.chiefComplaint}”
         </p>
       )}
 
-      <p className="mt-5 text-[11px] font-medium uppercase tracking-wide text-mist-500">Observations</p>
+      <p className="mt-5 text-2xs font-medium uppercase tracking-wide text-ink-600">Observations</p>
       <div className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-3">
         <VitalInput label="Temp °C" value={vitals.temperature} onChange={set('temperature')} placeholder="37.0" />
         <VitalInput label="Pulse bpm" value={vitals.pulse} onChange={set('pulse')} placeholder="78" />
@@ -225,7 +225,7 @@ function TriageForm({
         <VitalInput label="Weight kg" value={vitals.weightKg} onChange={set('weightKg')} placeholder="68" />
       </div>
 
-      <p className="mt-5 text-[11px] font-medium uppercase tracking-wide text-mist-500">
+      <p className="mt-5 text-2xs font-medium uppercase tracking-wide text-ink-600">
         Triage category (SATS)
       </p>
       <div className="mt-2 flex flex-col gap-1.5">
@@ -234,26 +234,26 @@ function TriageForm({
             key={a.value}
             type="button"
             onClick={() => setAcuity(a.value)}
-            className={`flex items-center gap-3 rounded-[var(--radius-xs)] border px-3 py-2.5 text-left transition-colors ${
-              acuity === a.value ? 'border-white/25 bg-white/8' : 'border-white/6 hover:border-white/12'
+            className={`flex items-center gap-3 rounded-xs border px-3 py-2.5 text-left transition-colors ${
+              acuity === a.value ? 'border-line bg-white/8' : 'border-line hover:border-line'
             }`}
           >
             <span className="h-4 w-4 shrink-0 rounded-full" style={{ background: a.color }} />
-            <span className="text-[13px] font-semibold text-mist-50">{a.label}</span>
-            <span className="text-[11.5px] text-mist-500">{a.hint}</span>
+            <span className="text-sm font-semibold text-ink-900">{a.label}</span>
+            <span className="text-2xs text-ink-600">{a.hint}</span>
           </button>
         ))}
       </div>
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <div>
-          <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-mist-500">
+          <label className="mb-1.5 block text-2xs font-medium uppercase tracking-wide text-ink-600">
             Send to
           </label>
           <select
             value={nextStationId}
             onChange={(e) => setNextStationId(e.target.value)}
-            className="w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-900/70 px-3 py-2 text-[13px] text-mist-100 outline-none focus:border-accent-500"
+            className="w-full rounded-xs border border-line bg-header px-3 py-2 text-sm text-ink-900 outline-none focus:border-primary-600"
           >
             {consultRooms.map((r) => (
               <option key={r.id} value={r.id}>
@@ -263,14 +263,14 @@ function TriageForm({
           </select>
         </div>
         <div>
-          <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-mist-500">
+          <label className="mb-1.5 block text-2xs font-medium uppercase tracking-wide text-ink-600">
             Triage note
           </label>
           <input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Anything the clinician must know first"
-            className="w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-900/70 px-3 py-2 text-[13px] text-mist-100 outline-none placeholder:text-mist-600 focus:border-accent-500"
+            className="w-full rounded-xs border border-line bg-header px-3 py-2 text-sm text-ink-900 outline-none placeholder:text-ink-500 focus:border-primary-600"
           />
         </div>
       </div>
@@ -279,7 +279,7 @@ function TriageForm({
         type="button"
         disabled={submit.isPending || !nextStationId}
         onClick={() => submit.mutate()}
-        className="mt-5 w-full rounded-[var(--radius-xs)] bg-accent-500 px-5 py-3 text-[13.5px] font-semibold text-charcoal-950 hover:opacity-90 disabled:opacity-40"
+        className="mt-5 w-full rounded-xs bg-primary-600 px-5 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
       >
         {submit.isPending ? 'Saving…' : 'Save triage & send to consultation'}
       </button>
@@ -293,10 +293,10 @@ function VitalInput({
 }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div>
-      <label className="mb-1 block text-[10.5px] text-mist-600">{label}</label>
+      <label className="mb-1 block text-2xs text-ink-500">{label}</label>
       <input
         {...props}
-        className="w-full rounded-[var(--radius-xs)] border border-white/8 bg-surface-900/70 px-2.5 py-2 font-mono text-[13px] tabular text-mist-100 outline-none placeholder:text-mist-700 focus:border-accent-500"
+        className="w-full rounded-xs border border-line bg-header px-2.5 py-2 font-mono text-sm tabular text-ink-900 outline-none placeholder:text-ink-500 focus:border-primary-600"
       />
     </div>
   )

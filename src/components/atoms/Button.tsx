@@ -26,19 +26,19 @@ export function Button({
   disabled,
 }: ButtonProps) {
   const base =
-    'inline-flex items-center gap-2 rounded-[var(--radius-xs)] font-medium tracking-tight select-none whitespace-nowrap'
+    'inline-flex items-center gap-2 rounded-xs font-medium tracking-tight select-none whitespace-nowrap'
 
   const sizes = {
-    sm: 'px-3 py-1.5 text-[13px]',
-    md: 'px-4 py-2.5 text-[14px]',
+    sm: 'px-3 py-1.5 text-sm',
+    md: 'px-4 py-2.5 text-sm',
   }
 
   const variants = {
     primary:
-      'bg-gradient-to-b from-accent-400 to-accent-600 text-charcoal-950 stroke-elevated',
-    ghost: 'bg-transparent text-mist-300 hover:text-mist-50',
+      'bg-gradient-to-b from-primary-600 to-primary-700 text-white',
+    ghost: 'bg-transparent text-ink-700 hover:text-ink-900',
     outline:
-      'bg-surface-800/60 text-mist-100 border border-white/8 stroke-elevated',
+      'bg-header text-ink-900 border border-line',
   }
 
   return (

@@ -11,15 +11,15 @@ const PATH =
 export function HeartbeatLine({ className }: HeartbeatLineProps) {
   return (
     <svg viewBox="0 0 200 40" className={className} preserveAspectRatio="none">
-      <path d={PATH} fill="none" stroke="color-mix(in srgb, var(--color-accent-500) 18%, transparent)" strokeWidth={1.5} />
+      <path d={PATH} fill="none" stroke="color-mix(in srgb, var(--color-primary-600) 18%, transparent)" strokeWidth={1.5} />
       <motion.path
         d={PATH}
         fill="none"
-        stroke="var(--color-accent-400)"
+        stroke="var(--color-primary-600)"
         strokeWidth={1.75}
         strokeLinecap="round"
         strokeLinejoin="round"
-        style={{ filter: 'drop-shadow(0 0 4px color-mix(in srgb, var(--color-accent-400) 70%, transparent))' }}
+        style={{ filter: 'drop-shadow(0 0 4px color-mix(in srgb, var(--color-primary-600) 70%, transparent))' }}
         initial={{ pathLength: 0, pathOffset: 0 }}
         animate={{ pathLength: [0, 1], pathOffset: [0, 1] }}
         transition={{ duration: 2.6, ease: 'linear', repeat: Infinity }}

@@ -1,71 +1,61 @@
-import { motion } from 'framer-motion'
 import { useId } from 'react'
 import { cn } from '../../lib/utils'
 
-interface CheckboxProps {
+/**
+ * Checkbox.
+ *
+ * A real `<input type="checkbox">` behind a styled box: it stays keyboard
+ * operable, announces its state, and participates in forms. The hit area is
+ * the whole label, and the control itself is 20px inside a 44px row so a
+ * gloved finger can hit it.
+ */
+export function Checkbox({
+  checked,
+  onChange,
+  label,
+  className,
+  disabled,
+}: {
   checked: boolean
   onChange: (next: boolean) => void
   label?: string
   className?: string
   disabled?: boolean
-}
-
-const spring = { type: 'spring', stiffness: 380, damping: 24 } as const
-
-// A custom checkbox that morphs its own outline from a circle to a
-// rounded square while the check glyph draws itself in via pathLength —
-// no native <input type="checkbox"> in sight.
-export function Checkbox({ checked, onChange, label, className, disabled }: CheckboxProps) {
+}) {
   const id = useId()
 
   return (
-    <label
-      htmlFor={id}
-      className={cn(
-        'inline-flex items-center gap-2.5 select-none',
-        disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer',
-        className,
-      )}
-    >
-      <button
-        id={id}
-        role="checkbox"
-        aria-checked={checked}
-        type="button"
-        disabled={disabled}
-        onClick={() => onChange(!checked)}
-        className="relative flex h-5 w-5 shrink-0 items-center justify-center outline-none disabled:cursor-not-allowed"
-      >
-        <motion.span
-          className="absolute inset-0 border"
-          animate={{
-            borderRadius: checked ? '30%' : '50%',
-            backgroundColor: checked ? 'var(--color-accent-500)' : 'transparent',
-            borderColor: checked
-              ? 'var(--color-accent-500)'
-              : 'color-mix(in srgb, var(--color-mist-400) 50%, transparent)',
-          }}
-          transition={spring}
+    <span className={cn('inline-flex items-center gap-2.5', className)}>
+      <span className="relative inline-flex h-5 w-5 shrink-0">
+        <input
+          id={id}
+          type="checkbox"
+          checked={checked}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.checked)}
+          className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
         />
-        <motion.svg
-          viewBox="0 0 16 16"
-          className="relative h-2.5 w-2.5"
-          initial={false}
+        <span
+          aria-hidden="true"
+          className={cn(
+            'pointer-events-none inline-flex h-5 w-5 items-center justify-center rounded-xs border-2 transition-colors',
+            checked ? 'border-primary-600 bg-primary-600 text-white' : 'border-line-strong bg-canvas',
+            disabled && 'opacity-45',
+            'peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary-600',
+          )}
         >
-          <motion.path
-            d="M3 8.2L6.2 11.4L13 4"
-            fill="none"
-            stroke="var(--color-charcoal-950)"
-            strokeWidth={2.4}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            initial={false}
-            animate={{ pathLength: checked ? 1 : 0, opacity: checked ? 1 : 0 }}
-            transition={{ ...spring, delay: checked ? 0.06 : 0 }}
-          />
-        </motion.svg>
-      </button>
-      {label && <span className="text-[13px] text-mist-300">{label}</span>}
-    </label>
+          {checked && (
+            <svg className="h-3.5 w-3.5" viewBox="0 0 14 14" fill="none">
+              <path d="m3 7.5 2.6 2.6L11 4.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </span>
+      </span>
+      {label && (
+        <label htmlFor={id} className="cursor-pointer text-sm text-ink-800">
+          {label}
+        </label>
+      )}
+    </span>
   )
 }

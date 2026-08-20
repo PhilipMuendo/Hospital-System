@@ -1,30 +1,49 @@
-import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { cn } from '../../lib/utils'
 
-interface TableRowProps {
-  children: ReactNode
+/**
+ * Deprecated — use `DataTable` from `components/ui`.
+ *
+ * A CSS-grid pseudo-row, retained for screens not yet migrated to real
+ * `<table>` markup. Restyled to match the design system's row metrics (48px,
+ * 1px rules, readable type) so a page using it does not look like a different
+ * product. New screens should use DataTable, which screen readers can
+ * actually navigate.
+ */
+export function TableRow({
+  columns,
+  children,
+  className,
+  onClick,
+}: {
   columns: string
+  children: ReactNode
   className?: string
-}
-
-// Div-based grid row (not a native <table>) so we can safely transform
-// on hover — expands slightly with a soft highlight, no harsh borders.
-export function TableRow({ children, columns, className }: TableRowProps) {
+  onClick?: () => void
+}) {
   return (
-    <motion.div
+    <div
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onClick()
+              }
+            }
+          : undefined
+      }
+      style={{ gridTemplateColumns: columns }}
       className={cn(
-        'grid items-center gap-4 rounded-[var(--radius-2xs)] border-t border-white/5 px-4 py-3.5 first:border-t-0',
+        'grid items-center gap-3 border-b border-line px-3 py-2.5 text-sm text-ink-800 last:border-b-0',
+        onClick && 'cursor-pointer hover:bg-primary-50',
         className,
       )}
-      style={{ gridTemplateColumns: columns }}
-      whileHover={{
-        scaleY: 1.02,
-        backgroundColor: 'color-mix(in srgb, white 3.5%, transparent)',
-      }}
-      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
     >
       {children}
-    </motion.div>
+    </div>
   )
 }

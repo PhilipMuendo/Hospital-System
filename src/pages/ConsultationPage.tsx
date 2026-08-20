@@ -125,22 +125,22 @@ export function ConsultationPage() {
                 key={r.id}
                 type="button"
                 onClick={() => setStationId(r.id)}
-                className={`rounded-[var(--radius-xs)] border px-3 py-2 text-[13px] transition-colors ${
+                className={`rounded-xs border px-3 py-2 text-sm transition-colors ${
                   stationId === r.id
-                    ? 'border-accent-500/50 bg-accent-500/12 text-mist-50'
-                    : 'border-white/8 text-mist-400 hover:text-mist-200'
+                    ? 'border-primary-200 bg-primary-600/12 text-ink-900'
+                    : 'border-line text-ink-600 hover:text-ink-800'
                 }`}
               >
                 {r.name}
               </button>
             ))}
           </div>
-          <p className="text-[12.5px] text-mist-500">{waiting.length} waiting</p>
+          <p className="text-xs text-ink-600">{waiting.length} waiting</p>
         </div>
       </GlassPanel>
 
       {error && (
-        <div className="rounded-[var(--radius-sm)] border border-status-warning/30 bg-status-warning/10 px-4 py-3 text-[13px] text-status-warning">
+        <div className="rounded-sm border border-warning-line bg-warning-bg px-4 py-3 text-sm text-warning">
           {error}
         </div>
       )}
@@ -149,12 +149,12 @@ export function ConsultationPage() {
         <GlassPanel className="p-6">
           {!current ? (
             <div className="py-12 text-center">
-              <p className="text-[13.5px] text-mist-500">No patient in the room.</p>
+              <p className="text-sm text-ink-600">No patient in the room.</p>
               <button
                 type="button"
                 onClick={() => callNext.mutate()}
                 disabled={callNext.isPending || waiting.length === 0}
-                className="mt-4 rounded-[var(--radius-xs)] bg-accent-500 px-6 py-3 text-[14px] font-semibold text-charcoal-950 hover:opacity-90 disabled:opacity-35"
+                className="mt-4 rounded-xs bg-primary-600 px-6 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-35"
               >
                 {waiting.length === 0 ? 'Queue empty' : 'Call next patient'}
               </button>
@@ -163,9 +163,9 @@ export function ConsultationPage() {
             <>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="font-mono text-[40px] font-bold leading-none text-accent-400">{current.token}</p>
-                  <h2 className="mt-2 text-[19px] font-semibold text-mist-50">{current.patient.name}</h2>
-                  <p className="mt-0.5 text-[12.5px] text-mist-500">
+                  <p className="font-mono text-3xl font-bold leading-none text-primary-700">{current.token}</p>
+                  <h2 className="mt-2 text-lg font-semibold text-ink-900">{current.patient.name}</h2>
+                  <p className="mt-0.5 text-xs text-ink-600">
                     {current.patient.opNumber ?? '—'} · {calculateAge(current.patient.dob)}y{' '}
                     {current.patient.sex.toLowerCase()} · waited {current.waitMinutes}m
                   </p>
@@ -174,7 +174,7 @@ export function ConsultationPage() {
               </div>
 
               {current.chiefComplaint && (
-                <p className="mt-4 rounded-[var(--radius-xs)] bg-surface-800/60 px-4 py-3 text-[13.5px] text-mist-300">
+                <p className="mt-4 rounded-xs bg-header px-4 py-3 text-sm text-ink-700">
                   “{current.chiefComplaint}”
                 </p>
               )}
@@ -185,21 +185,21 @@ export function ConsultationPage() {
                     <button
                       type="button"
                       onClick={() => start.mutate(current.id)}
-                      className="rounded-[var(--radius-xs)] bg-accent-500 px-5 py-2.5 text-[13px] font-semibold text-charcoal-950 hover:opacity-90"
+                      className="rounded-xs bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90"
                     >
                       Patient present — start
                     </button>
                     <button
                       type="button"
                       onClick={() => announcer.announce(current.token, current.counter)}
-                      className="rounded-[var(--radius-xs)] border border-white/10 px-4 py-2.5 text-[13px] text-mist-300 hover:text-mist-100"
+                      className="rounded-xs border border-line px-4 py-2.5 text-sm text-ink-700 hover:text-ink-900"
                     >
                       Announce again
                     </button>
                     <button
                       type="button"
                       onClick={() => noShow.mutate(current.id)}
-                      className="rounded-[var(--radius-xs)] border border-white/10 px-4 py-2.5 text-[13px] text-mist-400 hover:border-status-critical/40 hover:text-status-critical"
+                      className="rounded-xs border border-line px-4 py-2.5 text-sm text-ink-600 hover:border-critical-line hover:text-critical"
                     >
                       No show ({current.callCount}/3)
                     </button>
@@ -210,7 +210,7 @@ export function ConsultationPage() {
                       type="button"
                       disabled={complete.isPending}
                       onClick={() => complete.mutate({ id: current.id })}
-                      className="rounded-[var(--radius-xs)] bg-accent-500 px-5 py-2.5 text-[13px] font-semibold text-charcoal-950 hover:opacity-90 disabled:opacity-40"
+                      className="rounded-xs bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
                     >
                       Complete &amp; discharge
                     </button>
@@ -219,7 +219,7 @@ export function ConsultationPage() {
                       <select
                         value={onwardId}
                         onChange={(e) => setOnwardId(e.target.value)}
-                        className="rounded-[var(--radius-xs)] border border-white/10 bg-surface-900/70 px-3 py-2.5 text-[13px] text-mist-100 outline-none focus:border-accent-500"
+                        className="rounded-xs border border-line bg-header px-3 py-2.5 text-sm text-ink-900 outline-none focus:border-primary-600"
                       >
                         <option value="">Send to…</option>
                         {onwardStations.map((st) => (
@@ -232,7 +232,7 @@ export function ConsultationPage() {
                         type="button"
                         disabled={!onwardId || complete.isPending}
                         onClick={() => complete.mutate({ id: current.id, nextStationId: onwardId })}
-                        className="rounded-[var(--radius-xs)] border border-white/10 px-4 py-2.5 text-[13px] text-mist-300 hover:text-mist-100 disabled:opacity-35"
+                        className="rounded-xs border border-line px-4 py-2.5 text-sm text-ink-700 hover:text-ink-900 disabled:opacity-35"
                       >
                         Send onward
                       </button>
@@ -245,31 +245,31 @@ export function ConsultationPage() {
         </GlassPanel>
 
         <GlassPanel className="p-6">
-          <h2 className="text-[15px] font-semibold text-mist-50">Waiting</h2>
-          <p className="mt-1 text-[12px] text-mist-500">
+          <h2 className="text-base font-semibold text-ink-900">Waiting</h2>
+          <p className="mt-1 text-xs text-ink-600">
             Ordered by triage priority, not arrival. Long waits are promoted automatically.
           </p>
 
           <div className="mt-4 flex max-h-[460px] flex-col gap-1.5 overflow-y-auto pr-1">
             {queue.isLoading ? (
-              <Skeleton className="h-40 rounded-[var(--radius-sm)]" />
+              <Skeleton className="h-40 rounded-sm" />
             ) : waiting.length === 0 ? (
-              <p className="rounded-[var(--radius-sm)] border border-dashed border-white/8 px-4 py-8 text-center text-[13px] text-mist-600">
+              <p className="rounded-sm border border-dashed border-line px-4 py-8 text-center text-sm text-ink-500">
                 Nobody waiting.
               </p>
             ) : (
               waiting.map((q, i) => (
                 <div
                   key={q.id}
-                  className="flex items-center gap-3 rounded-[var(--radius-xs)] border border-white/6 bg-surface-800/50 px-3 py-2.5"
+                  className="flex items-center gap-3 rounded-xs border border-line bg-header px-3 py-2.5"
                 >
-                  <span className="w-5 shrink-0 text-center text-[12px] text-mist-600">{i + 1}</span>
-                  <span className="font-mono text-[14px] font-bold tabular text-mist-100">{q.token}</span>
+                  <span className="w-5 shrink-0 text-center text-xs text-ink-500">{i + 1}</span>
+                  <span className="font-mono text-sm font-bold tabular text-ink-900">{q.token}</span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] text-mist-200">{q.patient.name}</p>
+                    <p className="truncate text-sm text-ink-800">{q.patient.name}</p>
                     {q.acuity && <AcuityChip acuity={q.acuity} />}
                   </div>
-                  <span className={`shrink-0 text-[12px] ${q.breaching ? 'text-status-critical' : 'text-mist-500'}`}>
+                  <span className={`shrink-0 text-xs ${q.breaching ? 'text-critical' : 'text-ink-600'}`}>
                     {q.waitMinutes}m{q.breaching ? ' ⚠' : ''}
                   </span>
                 </div>

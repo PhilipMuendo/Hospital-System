@@ -56,8 +56,8 @@ export function AuditPage() {
       <GlassPanel className="p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-[17px] font-semibold text-mist-50">Audit Trail</h2>
-            <p className="mt-1 text-[12.5px] text-mist-500">
+            <h2 className="text-md font-semibold text-ink-900">Audit Trail</h2>
+            <p className="mt-1 text-xs text-ink-600">
               Append-only record of every access and change. Retained for the Data Protection Act 2019.
             </p>
           </div>
@@ -67,7 +67,7 @@ export function AuditPage() {
         <div className="mt-5 max-h-[600px] overflow-y-auto pr-1">
           <TableRow
             columns="0.8fr 1.5fr 1.3fr 1.6fr 0.7fr"
-            className="text-[11px] font-medium uppercase tracking-wide text-mist-500"
+            className="text-2xs font-medium uppercase tracking-wide text-ink-600"
           >
             <span>Action</span>
             <span>Actor</span>
@@ -77,9 +77,9 @@ export function AuditPage() {
           </TableRow>
 
           {auditQuery.isLoading ? (
-            <Skeleton className="mt-2 h-72 rounded-[var(--radius-sm)]" />
+            <Skeleton className="mt-2 h-72 rounded-sm" />
           ) : rows.length === 0 ? (
-            <p className="mt-4 rounded-[var(--radius-sm)] border border-dashed border-white/8 px-4 py-6 text-center text-[13px] text-mist-600">
+            <p className="mt-4 rounded-sm border border-dashed border-line px-4 py-6 text-center text-sm text-ink-500">
               No audit entries match this filter.
             </p>
           ) : (
@@ -93,20 +93,20 @@ export function AuditPage() {
                   <TableRow columns="0.8fr 1.5fr 1.3fr 1.6fr 0.7fr">
                     <Badge status={actionTone[r.action] ?? 'neutral'}>{r.action}</Badge>
                     <div className="min-w-0">
-                      <p className="truncate text-[13px] text-mist-200">{r.actorLabel}</p>
-                      {r.actorRole && <p className="text-[11px] text-mist-600">{r.actorRole}</p>}
+                      <p className="truncate text-sm text-ink-800">{r.actorLabel}</p>
+                      {r.actorRole && <p className="text-2xs text-ink-500">{r.actorRole}</p>}
                     </div>
-                    <span className="truncate text-[12.5px] text-mist-400">{r.entity}</span>
-                    <span className="truncate font-mono text-[11.5px] text-mist-600">
+                    <span className="truncate text-xs text-ink-600">{r.entity}</span>
+                    <span className="truncate font-mono text-2xs text-ink-500">
                       {r.method} {r.path}
                       {r.status ? ` · ${r.status}` : ''}
                     </span>
-                    <span className="text-[12px] text-mist-500">{formatDateTime(r.createdAt)}</span>
+                    <span className="text-xs text-ink-600">{formatDateTime(r.createdAt)}</span>
                   </TableRow>
                 </button>
 
                 {expanded === r.id && r.meta && (
-                  <pre className="mx-3 mb-3 overflow-x-auto rounded-[var(--radius-xs)] border border-white/6 bg-charcoal-950/70 p-3 font-mono text-[11.5px] leading-relaxed text-mist-400">
+                  <pre className="mx-3 mb-3 overflow-x-auto rounded-xs border border-line bg-sunken/70 p-3 font-mono text-2xs leading-relaxed text-ink-600">
                     {JSON.stringify({ ip: r.ip, entityId: r.entityId, patientId: r.patientId, meta: r.meta }, null, 2)}
                   </pre>
                 )}
