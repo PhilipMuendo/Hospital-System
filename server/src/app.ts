@@ -1,8 +1,10 @@
 import express from 'express'
 import cors from 'cors'
+import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
 import { errorHandler } from './middleware/errorHandler.js'
 import { auditLog } from './middleware/auditLog.js'
+import { generalLimiter, loginLimiter } from './middleware/security.js'
 import { authRoutes } from './routes/auth.routes.js'
 import { patientsRoutes } from './routes/patients.routes.js'
 import { vitalsRoutes } from './routes/vitals.routes.js'
@@ -48,6 +50,22 @@ export function createApp() {
     app.set('trust proxy', 1)
   }
 
+  // Behind a reverse proxy, req.ip must come from X-Forwarded-For or every
+  // client looks like the proxy and rate limiting collapses into one bucket.
+  app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 1))
+  // Do not advertise the stack.
+  app.disable('x-powered-by')
+
+  app.use(
+    helmet({
+      // The API serves JSON, not documents; a restrictive CSP here is
+      // meaningless and the SPA is served separately.
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'same-site' },
+      hsts: process.env.NODE_ENV === 'production' ? undefined : false,
+    }),
+  )
+
   const origins = allowedOrigins()
   app.use(
     cors({
@@ -59,7 +77,10 @@ export function createApp() {
       credentials: true,
     }),
   )
-  app.use(express.json())
+  // Cap the body. Nothing this API accepts is large, and an unbounded parser
+  // is free memory pressure for anyone who can reach it.
+  app.use(express.json({ limit: '256kb' }))
+  app.use(generalLimiter)
   app.use(cookieParser())
 
   // Before the routers, so it also observes requests that 401 or 403.
@@ -69,6 +90,8 @@ export function createApp() {
     res.json({ ok: true })
   })
 
+  // Tighter limit on the credential endpoint specifically.
+  app.use('/api/auth/login', loginLimiter)
   app.use('/api/auth', authRoutes)
   app.use('/api', patientsRoutes)
   app.use('/api', vitalsRoutes)

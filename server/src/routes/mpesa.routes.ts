@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/requireAuth.js'
 import { requireRole } from '../middleware/requireRole.js'
 import { ApiError } from '../middleware/errorHandler.js'
 import { audit, clientIp, writeAudit } from '../lib/audit.js'
+import { mpesaCallbackGuard } from '../middleware/security.js'
 import {
   CALLBACK_ACK,
   assertUsable,
@@ -106,7 +107,6 @@ mpesaRoutes.post(
       res.status(202).json({
         id: txn.id,
         status: txn.status,
-        checkoutRequestId: txn.checkoutRequestId,
         customerMessage: pushed.customerMessage,
         mocked: pushed.mocked,
       })
@@ -126,7 +126,7 @@ mpesaRoutes.post(
  * In production this route must additionally be IP-restricted to Safaricom's
  * published ranges at the proxy — see MPESA_CALLBACK_URL in .env.example.
  */
-mpesaRoutes.post('/mpesa/callback', async (req, res) => {
+mpesaRoutes.post(['/mpesa/callback/:secret', '/mpesa/callback'], mpesaCallbackGuard, async (req, res) => {
   const summary = parseStkCallback(req.body)
 
   // Always 200. A non-200 makes Daraja retry a callback we cannot parse,
@@ -168,6 +168,37 @@ mpesaRoutes.post('/mpesa/callback', async (req, res) => {
     if (existing.status !== 'PENDING') {
       res.json(CALLBACK_ACK)
       return
+    }
+
+    // Never trust the posted amount as the settlement amount, and never settle
+    // a line for less than was asked. A short-paid callback is either a
+    // partial payment that needs a human, or a forgery.
+    if (summary.resultCode === '0' && summary.amount !== undefined) {
+      const expected = Number(existing.amount)
+      if (Math.abs(summary.amount - expected) > 0.5) {
+        await prisma.mpesaTransaction.update({
+          where: { id: existing.id },
+          data: {
+            status: 'FAILED',
+            resultCode: summary.resultCode,
+            resultDesc: `Amount mismatch: expected ${expected}, callback reported ${summary.amount}`,
+            callbackPayload: req.body as Prisma.InputJsonValue,
+          },
+        })
+        await writeAudit({
+          actorLabel: 'safaricom-daraja',
+          action: 'DENIED',
+          entity: 'MpesaTransaction',
+          entityId: existing.id,
+          patientId: existing.patientId,
+          path: '/api/mpesa/callback',
+          status: 200,
+          ip: clientIp(req),
+          meta: { reason: 'amount mismatch', expected, reported: summary.amount },
+        })
+        res.json(CALLBACK_ACK)
+        return
+      }
     }
 
     await applyMpesaResult(existing.id, summary.resultCode, summary.resultDesc, {

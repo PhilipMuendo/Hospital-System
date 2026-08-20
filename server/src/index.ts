@@ -2,6 +2,11 @@ import 'dotenv/config'
 import { createApp } from './app.js'
 import { createMllpServer } from './lib/mllp-server.js'
 import { startHeartbeat } from './lib/queue-events.js'
+import { assertCallbackSecurity } from './middleware/security.js'
+
+// Fail fast rather than run a production process that would accept forged
+// payment confirmations.
+assertCallbackSecurity()
 
 const port = Number(process.env.PORT) || 4000
 const app = createApp()
