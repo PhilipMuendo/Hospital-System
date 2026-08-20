@@ -21,6 +21,8 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/ward', label: 'Ward', icon: 'bed', roles: ['ADMIN', 'NURSE', 'PHYSICIAN'] },
   { to: '/patients', label: 'Patients', icon: 'pulse' },
   { to: '/lab', label: 'Laboratory', icon: 'flask', roles: ['ADMIN', 'LAB_TECH', 'PHYSICIAN'] },
+  { to: '/radiology', label: 'Radiology', icon: 'scan', roles: ['ADMIN', 'RADIOGRAPHER', 'PHYSICIAN'] },
+  { to: '/cashier', label: 'Cashier', icon: 'cash', roles: ['ADMIN', 'BILLING'] },
   { to: '/scheduling', label: 'Scheduling', icon: 'timeline' },
   { to: '/pharmacy', label: 'Pharmacy', icon: 'pill' },
   { to: '/billing', label: 'Billing', icon: 'ledger', roles: ['BILLING', 'ADMIN'] },

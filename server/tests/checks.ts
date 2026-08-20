@@ -17,6 +17,7 @@ import {
 } from '../src/lib/mpesa.js'
 import { diff, redact } from '../src/lib/audit.js'
 import { dosesPerDayFrom, flagFor, orderLabWorklist } from '../src/lib/lab.js'
+import { needsPregnancyCheck } from '../src/lib/radiology.js'
 import {
   STARVATION_MINUTES,
   effectivePriority,
@@ -419,6 +420,39 @@ check('returns null rather than guessing an unrecognised frequency', () => {
   // A wrong dose count would show a drug round as complete when it is not.
   assert.equal(dosesPerDayFrom('per protocol'), null)
   assert.equal(dosesPerDayFrom(''), null)
+})
+
+console.log('\nRadiation safety')
+
+const NOW = new Date('2026-08-20T09:00:00+03:00')
+const born = (yearsAgo: number) => new Date(NOW.getFullYear() - yearsAgo, NOW.getMonth(), NOW.getDate())
+const xray = { ionising: true }
+const scan = { ionising: false }
+
+check('ionising study on a woman of childbearing age needs the check', () => {
+  assert.equal(needsPregnancyCheck(xray, { sex: 'FEMALE', dob: born(28) }, NOW), true)
+})
+check('ultrasound and MRI never need it', () => {
+  assert.equal(needsPregnancyCheck(scan, { sex: 'FEMALE', dob: born(28) }, NOW), false)
+})
+check('men are excluded', () => {
+  assert.equal(needsPregnancyCheck(xray, { sex: 'MALE', dob: born(28) }, NOW), false)
+})
+check('intersex patients are included — anatomy is not assumed from the field', () => {
+  assert.equal(needsPregnancyCheck(xray, { sex: 'INTERSEX', dob: born(28) }, NOW), true)
+})
+check('outside the childbearing window the check is skipped', () => {
+  assert.equal(needsPregnancyCheck(xray, { sex: 'FEMALE', dob: born(4) }, NOW), false)
+  assert.equal(needsPregnancyCheck(xray, { sex: 'FEMALE', dob: born(75) }, NOW), false)
+})
+check('the window is generous at both edges', () => {
+  // Deliberately wide: an unnecessary question costs seconds, a missed one
+  // costs a fetal dose that cannot be taken back.
+  assert.equal(needsPregnancyCheck(xray, { sex: 'FEMALE', dob: born(10) }, NOW), true)
+  assert.equal(needsPregnancyCheck(xray, { sex: 'FEMALE', dob: born(60) }, NOW), true)
+})
+check('an unparseable date of birth errs towards asking', () => {
+  assert.equal(needsPregnancyCheck(xray, { sex: 'FEMALE', dob: 'not-a-date' }, NOW), true)
 })
 
 console.log(`\n${passed} checks passed.\n`)

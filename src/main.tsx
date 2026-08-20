@@ -13,6 +13,8 @@ import { BillingPage } from './pages/BillingPage.tsx'
 import { ReportsPage } from './pages/ReportsPage.tsx'
 import { DevicesPage } from './pages/DevicesPage.tsx'
 import { LabPage } from './pages/LabPage.tsx'
+import { RadiologyPage } from './pages/RadiologyPage.tsx'
+import { CashierPage } from './pages/CashierPage.tsx'
 import { WardPage } from './pages/WardPage.tsx'
 import { ReceptionPage } from './pages/ReceptionPage.tsx'
 import { TriagePage } from './pages/TriagePage.tsx'
@@ -89,6 +91,22 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/pharmacy" element={<PharmacyPage />} />
               <Route path="/reports" element={<ReportsPage />} />
 
+              <Route
+                path="/radiology"
+                element={
+                  <RequireRole roles={['ADMIN', 'RADIOGRAPHER', 'PHYSICIAN']}>
+                    <RadiologyPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/cashier"
+                element={
+                  <RequireRole roles={['ADMIN', 'BILLING']}>
+                    <CashierPage />
+                  </RequireRole>
+                }
+              />
               <Route
                 path="/billing"
                 element={

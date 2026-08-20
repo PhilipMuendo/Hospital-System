@@ -58,6 +58,16 @@ enum BillingStatus {
   DENIED
 }
 
+enum PaymentMethod {
+  CASH
+  MPESA
+  CARD
+  /// Billed to SHA or a private insurer; settled on adjudication, not here.
+  INSURANCE
+  /// Written off. Requires a reason, which lands in the audit trail.
+  WAIVER
+}
+
 enum Payer {
   SHA
   IMARA_HEALTH_ASSURANCE
@@ -149,6 +159,9 @@ model User {
   labItemsCollected   LabOrderItem[]             @relation("LabCollectedBy")
   labItemsResulted    LabOrderItem[]             @relation("LabResultedBy")
   labItemsVerified    LabOrderItem[]             @relation("LabVerifiedBy")
+  imagingOrdered      ImagingOrder[]             @relation("ImagingOrderedBy")
+  imagingPerformed    ImagingOrder[]             @relation("ImagingPerformedBy")
+  imagingReported     ImagingOrder[]             @relation("ImagingReportedBy")
   medicationsGiven    MedicationAdministration[] @relation("MedicationGivenBy")
   alertsResolved      Alert[]       @relation("AlertResolvedBy")
 
@@ -213,6 +226,7 @@ model Patient {
   auditLogs         AuditLog[]
   visits            Visit[]
   labOrders         LabOrder[]
+  imagingOrders     ImagingOrder[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -272,6 +286,10 @@ model BillingLine {
   payer          Payer
   status         BillingStatus @default(PENDING)
   mpesaReference String?
+  paymentMethod  PaymentMethod?
+  paidAt         DateTime?
+  receiptNumber  String?
+  receivedById   String?
   createdById    String
   createdBy      User          @relation("BillingCreatedBy", fields: [createdById], references: [id])
   createdAt      DateTime      @default(now())
@@ -1111,4 +1129,107 @@ model MedicationAdministration {
 
   @@index([prescriptionItemId, administeredAt])
   @@index([administeredAt])
+}
+
+// ---------------------------------------------------------------------------
+// Radiology
+// ---------------------------------------------------------------------------
+
+enum ImagingModality {
+  XRAY
+  ULTRASOUND
+  CT
+  MRI
+  MAMMOGRAPHY
+  FLUOROSCOPY
+}
+
+enum ImagingOrderStatus {
+  ORDERED
+  /// Radiographer has acquired the images.
+  PERFORMED
+  /// A report has been written but not yet signed off.
+  REPORTED
+  /// Signed. Only then does it reach the chart.
+  VERIFIED
+  CANCELLED
+}
+
+/// Facility procedure catalogue.
+model ImagingProcedure {
+  id String @id @default(cuid())
+
+  code     String          @unique
+  name     String
+  modality ImagingModality
+  bodyPart String
+
+  /// Whether the procedure uses ionising radiation. Drives the pregnancy
+  /// check below — ultrasound and MRI do not need one, X-ray and CT do.
+  ionising Boolean @default(true)
+
+  /// Fasting, full bladder, contrast — what the patient must be told.
+  preparation String?
+
+  price          Decimal @db.Decimal(10, 2)
+  durationMins   Int     @default(15)
+  active         Boolean @default(true)
+
+  orders ImagingOrder[]
+
+  createdAt DateTime @default(now())
+
+  @@index([modality, active])
+}
+
+model ImagingOrder {
+  id String @id @default(cuid())
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  visitId   String?
+
+  procedureId String
+  procedure   ImagingProcedure @relation(fields: [procedureId], references: [id])
+
+  orderedById String
+  orderedBy   User   @relation("ImagingOrderedBy", fields: [orderedById], references: [id])
+
+  urgency       LabUrgency @default(ROUTINE)
+  clinicalNotes String?
+
+  status ImagingOrderStatus @default(ORDERED)
+
+  /// Radiation safety. For an ionising study on a person of childbearing
+  /// potential this must be answered before the exposure — an unrecorded
+  /// pregnancy is the one mistake in radiography that cannot be undone.
+  pregnancyChecked Boolean   @default(false)
+  pregnancyStatus  String?
+  lmpDate          DateTime?
+
+  /// Acquisition, by the radiographer.
+  performedAt    DateTime?
+  performedById  String?
+  performedBy    User?     @relation("ImagingPerformedBy", fields: [performedById], references: [id])
+  /// Views taken, exposure factors, anything that affects interpretation.
+  technicalNotes String?
+  /// Retakes are tracked because dose is cumulative and repeat rates are a
+  /// quality measure the department is judged on.
+  retakeCount    Int       @default(0)
+
+  /// Reporting, by a radiologist.
+  reportedAt   DateTime?
+  reportedById String?
+  reportedBy   User?     @relation("ImagingReportedBy", fields: [reportedById], references: [id])
+  findings     String?
+  impression   String?
+
+  /// The ImagingStudy row published to the chart on sign-off.
+  imagingStudyId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([patientId, createdAt])
 }

@@ -21,6 +21,8 @@ import { devicesRoutes } from './routes/devices.routes.js'
 import { queueRoutes } from './routes/queue.routes.js'
 import { labRoutes } from './routes/lab.routes.js'
 import { nursingRoutes } from './routes/nursing.routes.js'
+import { imagingOrdersRoutes } from './routes/imaging-orders.routes.js'
+import { cashierRoutes } from './routes/cashier.routes.js'
 
 /**
  * Origins allowed to make credentialed requests. Reflecting an arbitrary
@@ -85,6 +87,8 @@ export function createApp() {
   app.use('/api', queueRoutes)
   app.use('/api', labRoutes)
   app.use('/api', nursingRoutes)
+  app.use('/api', imagingOrdersRoutes)
+  app.use('/api', cashierRoutes)
 
   app.use(errorHandler)
 

@@ -77,6 +77,8 @@ async function main() {
     prisma.prescription.deleteMany(),
     prisma.stockMovement.deleteMany(),
     prisma.medicationAdministration.deleteMany(),
+    prisma.imagingOrder.deleteMany(),
+    prisma.imagingProcedure.deleteMany(),
     prisma.labOrderItem.deleteMany(),
     prisma.labOrder.deleteMany(),
     prisma.labTest.deleteMany(),
@@ -699,6 +701,20 @@ async function main() {
   ]
   for (const t of labTests) {
     await prisma.labTest.create({ data: { ...t, price: t.price } })
+  }
+
+  console.log('Seeding imaging catalogue...')
+  const imagingProcs = [
+    { code: 'RAD-001', name: 'Chest X-Ray, PA', modality: 'XRAY', bodyPart: 'Chest', ionising: true, price: 2500, durationMins: 10 },
+    { code: 'RAD-004', name: 'Abdominal X-Ray, erect', modality: 'XRAY', bodyPart: 'Abdomen', ionising: true, price: 2800, durationMins: 10 },
+    { code: 'RAD-011', name: 'Obstetric Ultrasound', modality: 'ULTRASOUND', bodyPart: 'Pelvis', ionising: false, price: 4500, durationMins: 20, preparation: 'Full bladder required.' },
+    { code: 'RAD-014', name: 'Abdominal Ultrasound', modality: 'ULTRASOUND', bodyPart: 'Abdomen', ionising: false, price: 4000, durationMins: 20, preparation: 'Fast for 6 hours.' },
+    { code: 'RAD-018', name: 'CT Head, non-contrast', modality: 'CT', bodyPart: 'Head', ionising: true, price: 15500, durationMins: 15 },
+    { code: 'RAD-022', name: 'CT Abdomen with contrast', modality: 'CT', bodyPart: 'Abdomen', ionising: true, price: 22000, durationMins: 30, preparation: 'Fast 4 hours; check renal function before contrast.' },
+    { code: 'RAD-031', name: 'MRI Lumbar Spine', modality: 'MRI', bodyPart: 'Spine', ionising: false, price: 38000, durationMins: 45, preparation: 'Remove all metal; screen for implants.' },
+  ]
+  for (const pr of imagingProcs) {
+    await prisma.imagingProcedure.create({ data: { ...pr, modality: pr.modality as never } })
   }
 
   console.log('Seeding queue stations...')

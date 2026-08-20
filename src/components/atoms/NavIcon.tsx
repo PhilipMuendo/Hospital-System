@@ -79,6 +79,21 @@ export function NavIcon({ name }: { name: string }) {
           <circle cx="14.7" cy="9" r="1.6" stroke="currentColor" strokeWidth="1.4" />
         </svg>
       )
+    case 'scan':
+      return (
+        <svg {...common}>
+          <path d="M2.5 6V3.5H5M13 3.5h2.5V6M15.5 12v2.5H13M5 14.5H2.5V12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M2.5 9h13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+      )
+    case 'cash':
+      return (
+        <svg {...common}>
+          <rect x="2" y="4.5" width="14" height="9" rx="1.6" stroke="currentColor" strokeWidth="1.4" />
+          <circle cx="9" cy="9" r="2.2" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M4.6 7v4M13.4 7v4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+      )
     case 'ledger':
       return (
         <svg {...common}>
