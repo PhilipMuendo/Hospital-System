@@ -7,6 +7,15 @@ system — deep charcoal navigation, cool operating-room greys, one muted
 teal/cyan accent, glass-morphic surfaces, spring-physics motion — built with
 React, TypeScript, Tailwind CSS v4, Framer Motion, Express, and Prisma.
 
+## Documentation
+
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — why the system is built the way it
+  is: the safety controls, the payment trust model, the offline rules, and the
+  bugs that shaped them. Read it before changing anything under
+  `server/src/lib/` or any route touching money, medication or the audit trail.
+- **[SECURITY.md](SECURITY.md)** — threat model, what was found and fixed, and
+  what must be configured before production.
+
 ## What's here
 
 - **Now Playing Dashboard** — the physician command view. A large bed-occupancy
