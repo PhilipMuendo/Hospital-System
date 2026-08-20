@@ -176,7 +176,7 @@ export function PatientRecordSplitView() {
         />
       )}
 
-      <GlassPanel className="grid grid-cols-1 overflow-hidden md:grid-cols-[minmax(0,30%)_minmax(0,70%)]">
+      <GlassPanel className="grid grid-cols-1 overflow-hidden lg:grid-cols-[minmax(280px,30%)_minmax(0,70%)]">
       {/* Left pane — 30% identity & vitals */}
       <div className="flex flex-col gap-6 border-b border-line p-6 md:border-b-0 md:border-r">
         <div className="relative">

@@ -11,6 +11,7 @@ labsRoutes.get('/patients/:id/labs', requireAuth, async (req, res, next) => {
     const labs = await prisma.labResult.findMany({
       where: { patientId: req.params.id },
       orderBy: { collectedAt: 'desc' },
+      take: 100,
     })
     res.json(labs)
   } catch (err) {

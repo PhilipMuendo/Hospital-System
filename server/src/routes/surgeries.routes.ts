@@ -39,6 +39,7 @@ surgeriesRoutes.get('/surgeries', requireAuth, async (req, res, next) => {
     const surgeries = await prisma.surgery.findMany({
       where: { startsAt: { gte: start, lt: end } },
       orderBy: { startsAt: 'asc' },
+      take: 200,
       include: {
         patient: { select: { id: true, name: true, ipNumber: true } },
         surgeon: { select: { id: true, name: true } },

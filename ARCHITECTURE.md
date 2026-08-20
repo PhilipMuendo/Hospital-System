@@ -64,6 +64,23 @@ Clinical staff can read any chart. That is correct for a hospital and is
 **controlled by the audit trail, not by blocking access**. Don't "fix" it with
 per-patient ACLs; you will break ward cover and night shifts.
 
+### 2.4 Two cashiers must not settle one charge
+
+Anything that changes money or a clinical record is guarded **in the database**,
+not by a read-then-write check in application code.
+
+The cash desk originally did `find` → "is it already paid?" → `update`. Six
+concurrent payments for one KES 15,500 line produced **two receipts**. The
+check passed for both because both read before either wrote.
+
+Every settlement path now uses a conditional update — `updateMany` with the
+expected status in the `WHERE` — and treats an affected-row count below
+expectation as "someone else won", rolling the transaction back. Verified: 8
+concurrent payments now yield 1 receipt and 7 rejections.
+
+If you add a state transition that matters, guard it the same way. A pre-check
+is for the error message; the `WHERE` clause is the safety.
+
 ---
 
 ## 3. Layout
@@ -85,10 +102,18 @@ server/src/
   routes/       HTTP only. Validate, call lib, persist, audit, respond.
 src/
   pages/        One screen per department
-  components/   atoms → molecules → organisms → print/
-  lib/          apiClient, offline outbox, formatting
+  components/
+    ui/         THE design system. Everything a screen needs comes from here.
+    print/      A4 documents — independent of the app theme, do not restyle
+    atoms|molecules|organisms/  legacy; several are now adapters over ui/
+  lib/          apiClient, offline outbox, formatting, useHotkeys
   routes/       navigation source of truth, guards, layout
 ```
+
+**`components/ui` is the design system boundary.** If a screen is hand-rolling
+a control, that is a gap to fill in `ui/`, not to style in place. The previous
+UI had 341 arbitrary font sizes across 14 values and the same input class
+string copy-pasted into eight files.
 
 **The `lib/` boundary matters.** Anything with a rule worth arguing about
 belongs there, pure and testable. `server/tests/checks.ts` runs 68 checks with
@@ -170,6 +195,32 @@ patient by ~16%. Most medical services are exempt, so exempt is the common
 path, not the edge case.
 
 ---
+
+## 4b. Interface decisions
+
+The clinical screens are light, high-contrast and dense. Wards are brightly
+lit; dark UI washes out under fluorescent glare. **Dark is reserved for
+`/board`**, the corridor display, which is a 3-metre-viewing-distance product
+and is deliberately excluded from every styling sweep.
+
+Load-bearing rules:
+
+- **Type is the safety layer.** Fixed scale, nothing below 12px, and 12px only
+  for table meta — never a clinical value. Do not solve density by shrinking
+  text; fix the information architecture.
+- **Status never relies on colour alone.** Colour + icon + text, always. The
+  old palette had `--color-status-warning` set to the same teal as the brand
+  accent, so a warning looked like a button.
+- **`PatientHeader` is sticky and non-dismissible** on patient-scoped screens.
+  Wrong-patient error is the commonest serious error in hospital software.
+- **No `window.prompt`.** Anything a regulator or controller reads later —
+  dose omission, refusal, specimen rejection, fee waiver — uses `ReasonDialog`
+  with coded options, because free text cannot be counted or charted.
+- **Errors persist, successes auto-clear.** A toast confirms state; it never
+  replaces it. If a row changed, the row shows it too.
+- **Keyboard first on high-volume desks.** `/` search, arrows, Enter, Esc,
+  `g`+letter route jumps. No Ctrl/Cmd combination is claimed — those belong to
+  the browser and the screen reader.
 
 ## 5. Payments — read this before touching `mpesa.routes.ts`
 
@@ -255,6 +306,28 @@ analysers actually speak.
 
 ---
 
+## 7b. Performance
+
+Sized for a facility that accumulates records for years, not for the seed
+volume. Every index in `20260820170000_search_and_scale_indexes` came from a
+query plan, not a guess.
+
+- **Patient search was a sequential scan.** Reception searches with
+  `ILIKE '%term%'`, which no btree index can serve. At 122 rows that is
+  invisible; at 200,000 — an ordinary decade for a mid-size hospital — it is a
+  full table scan per keystroke, per desk, concurrently. Fixed with `pg_trgm`
+  GIN indexes; the plan is now a Bitmap Index Scan.
+- **Chart reads are bounded.** A monitored ICU patient generates hundreds of
+  observations a day and the chart only renders the recent ones.
+- **Partial indexes for worklists**, so the index tracks open work rather than
+  the archive.
+- **Route-level code splitting.** Initial bundle 590 KB → 292 KB (172 → 88.5 KB
+  gzipped). Login and dashboard are eager; nothing else is, because no user
+  visits all seventeen screens.
+
+Hospital workstations are old and connections are poor. Treat payload size as
+a clinical constraint, not a nicety.
+
 ## 8. Migrations — two traps
 
 1. **`ALTER TYPE ... ADD VALUE` needs its own migration.** PostgreSQL refuses
@@ -300,6 +373,8 @@ None of these were caught by typecheck or unit tests:
 | Seed status regression | Every ward read empty |
 | Idempotency store threw in `res.json` | Successful writes returned 500 |
 | Forged M-Pesa callback | Any bill settleable without payment |
+| Two cashiers settling one line | Two receipts for one KES 15,500 charge |
+| Patient search seq-scanning | Full table scan per keystroke at scale |
 
 **Run the thing.** Typecheck and unit tests will not find this class of bug.
 

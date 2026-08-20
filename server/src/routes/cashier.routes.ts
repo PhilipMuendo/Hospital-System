@@ -125,6 +125,9 @@ cashierRoutes.post(
       const lines = await prisma.billingLine.findMany({ where: { id: { in: data.lineIds } } })
       if (lines.length !== data.lineIds.length) throw new ApiError(404, 'One or more lines not found')
 
+      // Pre-check for a clear error message. It is NOT the safety mechanism —
+      // the guarded update below is. Two cashiers hitting the same line
+      // milliseconds apart both pass this check.
       const alreadyPaid = lines.find((l) => l.status === 'PAID')
       if (alreadyPaid) throw new ApiError(409, `"${alreadyPaid.description}" is already settled`)
 
@@ -138,8 +141,11 @@ cashierRoutes.post(
         const sequence = await nextSequence(tx, `receipt:${today}`)
         const receiptNumber = `RCT/${today.replace(/-/g, '')}/${String(sequence).padStart(4, '0')}`
 
-        await tx.billingLine.updateMany({
-          where: { id: { in: data.lineIds } },
+        // The status guard makes the database the arbiter of who won the race.
+        // Without it, two concurrent payments both settle the same charge and
+        // the facility issues two receipts for one sale — observed in testing.
+        const settled = await tx.billingLine.updateMany({
+          where: { id: { in: data.lineIds }, status: 'PENDING' },
           data: {
             // A waiver is not revenue. It closes the line without pretending
             // money changed hands, so it can be reported on separately.
@@ -151,6 +157,13 @@ cashierRoutes.post(
             ...(data.reference ? { mpesaReference: data.reference } : {}),
           },
         })
+
+        if (settled.count !== data.lineIds.length) {
+          // Someone else settled at least one of these first. Throwing rolls
+          // the transaction back, including the receipt number, so no gap
+          // appears in the receipt sequence.
+          throw new ApiError(409, 'One or more of these lines was settled by another cashier just now')
+        }
 
         return { receiptNumber }
       })

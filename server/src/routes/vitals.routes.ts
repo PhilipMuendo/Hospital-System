@@ -12,6 +12,8 @@ vitalsRoutes.get('/patients/:id/vitals', requireAuth, async (req, res, next) => 
     const vitals = await prisma.vitalReading.findMany({
       where: { patientId: req.params.id },
       orderBy: { recordedAt: 'desc' },
+      // Bounded: an ICU patient on a monitor generates hundreds a day.
+      take: 100,
     })
     res.json(vitals)
   } catch (err) {

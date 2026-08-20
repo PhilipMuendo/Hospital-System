@@ -9,6 +9,7 @@ imagingRoutes.get('/patients/:id/imaging', requireAuth, async (req, res, next) =
     const studies = await prisma.imagingStudy.findMany({
       where: { patientId: req.params.id },
       orderBy: { performedAt: 'desc' },
+      take: 50,
     })
     res.json(studies)
   } catch (err) {

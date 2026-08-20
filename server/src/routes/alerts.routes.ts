@@ -12,6 +12,8 @@ alertsRoutes.get('/alerts', requireAuth, async (req, res, next) => {
     const alerts = await prisma.alert.findMany({
       where: resolved === undefined ? {} : { resolved },
       orderBy: { createdAt: 'desc' },
+      // The feed is a working list, not an archive.
+      take: 100,
       include: { ward: { select: { id: true, name: true } } },
     })
     res.json(alerts)

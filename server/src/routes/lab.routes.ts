@@ -109,6 +109,7 @@ labRoutes.get('/patients/:id/lab-orders', requireAuth, async (req, res, next) =>
     const orders = await prisma.labOrder.findMany({
       where: { patientId: req.params.id },
       orderBy: { createdAt: 'desc' },
+      take: 50,
       include: {
         orderedBy: { select: { name: true } },
         items: { include: { labTest: true } },

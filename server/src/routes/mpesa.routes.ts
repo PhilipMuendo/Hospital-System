@@ -232,8 +232,10 @@ async function applyMpesaResult(
   const status = statusForResultCode(resultCode)
 
   await prisma.$transaction(async (tx) => {
-    const txn = await tx.mpesaTransaction.update({
-      where: { id: transactionId },
+    // Guarded on PENDING for the same reason as the cashier path: Daraja
+    // retries, and a retry racing the original must not settle twice.
+    const guarded = await tx.mpesaTransaction.updateMany({
+      where: { id: transactionId, status: 'PENDING' },
       data: {
         status,
         resultCode,
@@ -249,9 +251,14 @@ async function applyMpesaResult(
       },
     })
 
+    // Another delivery of the same callback already applied this result.
+    if (guarded.count === 0) return
+
+    const txn = await tx.mpesaTransaction.findUniqueOrThrow({ where: { id: transactionId } })
+
     if (status === 'SUCCESS' && txn.billingLineId) {
-      await tx.billingLine.update({
-        where: { id: txn.billingLineId },
+      await tx.billingLine.updateMany({
+        where: { id: txn.billingLineId, status: { not: 'PAID' } },
         data: {
           status: 'PAID',
           // The M-Pesa receipt is the facility's proof of payment, so it

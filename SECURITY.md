@@ -69,6 +69,25 @@ spraying. Rate-limit hits are audited.
 *Verified:* attempts 11–15 return `429`; a different account from the same IP
 still signs in normally.
 
+### HIGH — concurrent payments settled one charge twice · **fixed**
+
+The cash desk read the line, checked "already paid?", then wrote. Both steps
+are separate statements, so two cashiers hitting the same line milliseconds
+apart both passed the check.
+
+**Reproduced:** six concurrent payments against one KES 15,500 line produced
+**two receipts** (`RCT/20260820/0002` and `/0003`). In a cash office that is
+either a patient charged twice or a revenue report that double-counts — and it
+would be invisible until reconciliation.
+
+**Fixed** by making the database the arbiter: settlement is now a conditional
+`updateMany` with the expected status in the `WHERE`, and an affected-row count
+below expectation rolls the transaction back. The same guard was applied to the
+M-Pesa settlement path, which had the identical shape and is retried by Daraja
+by design.
+
+*Verified after the fix:* 8 concurrent payments → 1 receipt, 7 rejections.
+
 ### MEDIUM — information disclosure and resource limits · **fixed**
 
 - `X-Powered-By: Express` advertised the stack. Now disabled, `helmet` added
@@ -77,6 +96,21 @@ still signs in normally.
   capped at 256KB answering `413`.
 - `trust proxy` is explicit. A wrong value either collapses rate limiting into
   one bucket or lets `X-Forwarded-For` spoof it.
+
+### Attack classes tested and found sound
+
+Run against the live API, not reasoned about:
+
+| Attack | Result |
+|---|---|
+| Operator injection (object where a string is expected) | Rejected by schema validation |
+| Prototype pollution via `__proto__` in a JSON body | No pollution; request rejected |
+| Mass assignment (`id`, `opNumber`, `status` forced) | All stripped — none took effect |
+| JWT `alg=none` forgery | 401 |
+| Idempotency-key replay across users | Keys are per-actor; no cross-user replay |
+| Cross-site form POST (CSRF) | Blocked — `SameSite=Lax` withholds the cookie |
+| Credential brute force | 429 after 10 attempts, per IP **and** account |
+| Forged payment callback | 404 without the URL secret; amount mismatch refused |
 
 ### Checked and found sound
 
@@ -131,8 +165,10 @@ Strongly recommended:
 - [ ] Alert on `LOGIN_FAILED` clusters, `DENIED` on the M-Pesa callback, and
       any eTIMS invoice stuck `FAILED`.
 - [ ] Schedule `pruneIdempotencyKeys()` daily.
-- [ ] Penetration test before go-live. This review was one engineer for one
-      session; it is not an assurance engagement.
+- [ ] Penetration test before go-live. This review was one engineer for two
+      sessions; it is not an assurance engagement.
+- [ ] Load test the settlement and check-in paths specifically. Both bugs found
+      here were concurrency bugs invisible to single-request testing.
 
 ---
 

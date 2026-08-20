@@ -36,9 +36,12 @@ export function TableRow({
             }
           : undefined
       }
-      style={{ gridTemplateColumns: columns }}
+      // Below md the fr-based grid crushes every column to unreadable width on
+      // a ward tablet, so the row wraps instead. Above md it is a real grid.
+      style={{ ['--cols' as string]: columns }}
       className={cn(
-        'grid items-center gap-3 border-b border-line px-3 py-2.5 text-sm text-ink-800 last:border-b-0',
+        'flex flex-wrap items-center gap-x-3 gap-y-1 md:grid md:[grid-template-columns:var(--cols)]',
+        'border-b border-line px-3 py-2.5 text-sm text-ink-800 last:border-b-0',
         onClick && 'cursor-pointer hover:bg-primary-50',
         className,
       )}
