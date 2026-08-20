@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/requireAuth.js'
 import { requireRole } from '../middleware/requireRole.js'
 import { ApiError } from '../middleware/errorHandler.js'
 import { audit } from '../lib/audit.js'
+import { dosesPerDayFrom } from '../lib/lab.js'
 import {
   allergyConflicts,
   allocateFefo,
@@ -344,7 +345,11 @@ pharmacyRoutes.post(
           prescriberId: req.user!.id,
           notes: data.notes,
           allergyOverrideReason: conflicts.length > 0 ? data.allergyOverrideReason : null,
-          items: { create: data.items },
+          items: {
+            // Derived once, at prescribing time, so the drug round can tell a
+            // complete round from an incomplete one. Null for PRN.
+            create: data.items.map((i) => ({ ...i, dosesPerDay: dosesPerDayFrom(i.frequency) })),
+          },
         },
         include: { items: { include: { drug: true } } },
       })

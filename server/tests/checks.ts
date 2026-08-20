@@ -16,6 +16,7 @@ import {
   stkPassword,
 } from '../src/lib/mpesa.js'
 import { diff, redact } from '../src/lib/audit.js'
+import { dosesPerDayFrom, flagFor, orderLabWorklist } from '../src/lib/lab.js'
 import {
   STARVATION_MINUTES,
   effectivePriority,
@@ -344,6 +345,80 @@ check('service day is Nairobi-local, not UTC', () => {
 check('pads tokens so they line up on the board', () => {
   assert.equal(formatToken('C', 7), 'C-007')
   assert.equal(formatToken('C', 142), 'C-142')
+})
+
+console.log('\nLab results')
+
+const potassium = { refLow: 3.5, refHigh: 5.1 }
+const troponin = { refLow: null, refHigh: 0.04 }
+const culture = { refLow: null, refHigh: null }
+
+check('flags against the catalogue range, not the typist', () => {
+  assert.equal(flagFor('4.2', potassium), 'NORMAL')
+  assert.equal(flagFor('2.9', potassium), 'LOW')
+  assert.equal(flagFor('6.4', potassium), 'HIGH')
+})
+check('reads a value that carries its unit', () => {
+  assert.equal(flagFor('6.4 mmol/L', potassium), 'HIGH')
+})
+check('handles a one-sided reference range', () => {
+  assert.equal(flagFor('0.01', troponin), 'NORMAL')
+  assert.equal(flagFor('12.8', troponin), 'HIGH')
+})
+check('reads a censored bench value', () => {
+  assert.equal(flagFor('<0.01', troponin), 'NORMAL')
+  assert.equal(flagFor('> 200', troponin), 'HIGH')
+})
+check('leaves qualitative tests to the technologist', () => {
+  assert.equal(flagFor('No growth', culture), 'NORMAL')
+  assert.equal(flagFor('Positive', culture), 'NORMAL')
+})
+check('does not invent a flag from unparseable text', () => {
+  assert.equal(flagFor('Sample haemolysed', potassium), 'NORMAL')
+})
+
+console.log('\nLab worklist order')
+const wl = (id: string, urgency: 'STAT' | 'URGENT' | 'ROUTINE', minsAgo: number, status = 'ORDERED') => ({
+  id,
+  urgency,
+  status,
+  orderedAt: new Date(T0.getTime() - minsAgo * 60000),
+})
+
+check('STAT jumps the bench queue', () => {
+  const q = orderLabWorklist([wl('old-routine', 'ROUTINE', 240), wl('new-stat', 'STAT', 1)])
+  assert.equal(q[0].id, 'new-stat')
+})
+check('oldest first within an urgency band', () => {
+  const q = orderLabWorklist([wl('newer', 'ROUTINE', 10), wl('older', 'ROUTINE', 90)])
+  assert.equal(q[0].id, 'older')
+})
+check('rejected specimens surface first — a ward is waiting for a repeat', () => {
+  const q = orderLabWorklist([wl('stat', 'STAT', 1), wl('rejected', 'ROUTINE', 30, 'REJECTED')])
+  assert.equal(q[0].id, 'rejected')
+})
+
+console.log('\nDose frequency')
+check('reads the abbreviations used on Kenyan drug charts', () => {
+  assert.equal(dosesPerDayFrom('OD'), 1)
+  assert.equal(dosesPerDayFrom('BD'), 2)
+  assert.equal(dosesPerDayFrom('TDS'), 3)
+  assert.equal(dosesPerDayFrom('QDS'), 4)
+  assert.equal(dosesPerDayFrom('nocte'), 1)
+})
+check('reads hourly frequencies', () => {
+  assert.equal(dosesPerDayFrom('every 6 hours'), 4)
+  assert.equal(dosesPerDayFrom('8 hourly'), 3)
+  assert.equal(dosesPerDayFrom('q12h'), 2)
+})
+check('PRN has no schedule, so it counts towards no round', () => {
+  assert.equal(dosesPerDayFrom('PRN'), null)
+  assert.equal(dosesPerDayFrom('as required'), null)
+})
+check('returns null rather than guessing an unrecognised frequency', () => {
+  // A wrong dose count would show a drug round as complete when it is not.
+  assert.equal(dosesPerDayFrom('per protocol'), null)
+  assert.equal(dosesPerDayFrom(''), null)
 })
 
 console.log(`\n${passed} checks passed.\n`)

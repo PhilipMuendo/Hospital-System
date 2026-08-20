@@ -28,6 +28,20 @@ export function NavIcon({ name }: { name: string }) {
           <rect x="2" y="11.6" width="9" height="2.4" rx="1.2" stroke="currentColor" strokeWidth="1.3" />
         </svg>
       )
+    case 'bed':
+      return (
+        <svg {...common}>
+          <path d="M2.5 5v9M2.5 8.5h13V14M2.5 11.5h13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          <circle cx="6" cy="6.6" r="1.5" stroke="currentColor" strokeWidth="1.3" />
+        </svg>
+      )
+    case 'flask':
+      return (
+        <svg {...common}>
+          <path d="M7 2.5v4.2L3.2 13a1.6 1.6 0 0 0 1.4 2.5h8.8a1.6 1.6 0 0 0 1.4-2.5L11 6.7V2.5" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+          <path d="M6 2.5h6M5.4 10.6h7.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+      )
     case 'pill':
       return (
         <svg {...common}>

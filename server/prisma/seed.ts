@@ -69,6 +69,10 @@ async function main() {
     prisma.prescriptionItem.deleteMany(),
     prisma.prescription.deleteMany(),
     prisma.stockMovement.deleteMany(),
+    prisma.medicationAdministration.deleteMany(),
+    prisma.labOrderItem.deleteMany(),
+    prisma.labOrder.deleteMany(),
+    prisma.labTest.deleteMany(),
     prisma.queueTicket.deleteMany(),
     prisma.triageAssessment.deleteMany(),
     prisma.visit.deleteMany(),
@@ -118,6 +122,11 @@ async function main() {
   const nurseChebet = await createUser('Chebet Kiptoo', 'chebet.kiptoo@uzimageneral.ke', 'NURSE')
   const billingBrenda = await createUser('Brenda Nyambura', 'b.nyambura@uzimageneral.ke', 'BILLING')
   const pharmJoseph = await createUser('Joseph Kariuki', 'j.kariuki@uzimageneral.ke', 'PHARMACIST')
+  // Two technologists, because a result must be verified by someone other
+  // than the person who ran it.
+  await createUser('Mercy Adhiambo', 'm.adhiambo@uzimageneral.ke', 'LAB_TECH')
+  await createUser('Kevin Mutiso', 'k.mutiso@uzimageneral.ke', 'LAB_TECH')
+  await createUser('Dennis Kiprop', 'd.kiprop@uzimageneral.ke', 'RADIOGRAPHER')
   const physicians = [drNjeri, drKiptoo, drWafula, drAbdi]
 
   console.log('Seeding richly-detailed patients...')
@@ -152,7 +161,7 @@ async function main() {
       wardId: wards.get('Cardiac ICU')!.id,
       bed: 'Bed 6',
       primaryPhysicianId: drNjeri.id,
-      admittedAt: daysAgo(4),
+      status: 'ADMITTED', admittedAt: daysAgo(4),
       vitals: {
         create: [
           { label: 'Heart Rate', value: '78', unit: 'bpm', status: 'HEALTHY' },
@@ -202,7 +211,7 @@ async function main() {
       assessment: 'Uncomplicated post-appendectomy recovery; mild surgical site inflammation, afebrile since this morning.',
       carePlan: ['Continue oral antibiotics', 'Mobilise and encourage ambulation', 'Wound check before discharge planning'],
       avatarInitials: 'PO', wardId: wards.get('General Ward')!.id, bed: 'Bed 12',
-      primaryPhysicianId: drWafula.id, admittedAt: daysAgo(2),
+      primaryPhysicianId: drWafula.id, status: 'ADMITTED', admittedAt: daysAgo(2),
       vitals: { create: [
         { label: 'Heart Rate', value: '88', unit: 'bpm', status: 'HEALTHY' },
         { label: 'Blood Pressure', value: '118/76', unit: 'mmHg', status: 'HEALTHY' },
@@ -236,7 +245,7 @@ async function main() {
       assessment: 'Mild pre-eclampsia; blood pressure trending down on labetalol, foetal monitoring reassuring.',
       carePlan: ['4-hourly BP and urine protein checks', 'Continue labetalol', 'Daily CTG monitoring', 'Plan for induction if BP does not stabilise by 40 weeks'],
       avatarInitials: 'AH', wardId: wards.get('Maternity Ward')!.id, bed: 'Bed 3',
-      primaryPhysicianId: drAbdi.id, admittedAt: daysAgo(1),
+      primaryPhysicianId: drAbdi.id, status: 'ADMITTED', admittedAt: daysAgo(1),
       vitals: { create: [
         { label: 'Heart Rate', value: '92', unit: 'bpm', status: 'HEALTHY' },
         { label: 'Blood Pressure', value: '142/94', unit: 'mmHg', status: 'WARNING' },
@@ -270,7 +279,7 @@ async function main() {
       assessment: 'GCS improved from 13 to 15 over 24 hours; CT head shows no acute intracranial haemorrhage. Neuro observations stable.',
       carePlan: ['Hourly neuro observations', 'Repeat CT if any deterioration', 'Analgesia as required', 'Physiotherapy review before step-down'],
       avatarInitials: 'KL', wardId: wards.get('High Dependency Unit')!.id, bed: 'Bed 8',
-      primaryPhysicianId: drKiptoo.id, admittedAt: daysAgo(2),
+      primaryPhysicianId: drKiptoo.id, status: 'ADMITTED', admittedAt: daysAgo(2),
       vitals: { create: [
         { label: 'Heart Rate', value: '74', unit: 'bpm', status: 'HEALTHY' },
         { label: 'Blood Pressure', value: '132/85', unit: 'mmHg', status: 'HEALTHY' },
@@ -303,7 +312,7 @@ async function main() {
       assessment: 'Serial troponins negative, ECG without ST changes; low-risk chest pain, likely musculoskeletal but observing per protocol.',
       carePlan: ['Repeat troponin in 3 hours', 'Continuous cardiac monitoring', 'Cardiology review if any change'],
       avatarInitials: 'NK', wardId: wards.get('Casualty')!.id, bed: 'Bed 2',
-      primaryPhysicianId: drNjeri.id, admittedAt: daysAgo(0),
+      primaryPhysicianId: drNjeri.id, status: 'ADMITTED', admittedAt: daysAgo(0),
       vitals: { create: [
         { label: 'Heart Rate', value: '96', unit: 'bpm', status: 'WARNING' },
         { label: 'Blood Pressure', value: '148/90', unit: 'mmHg', status: 'WARNING' },
@@ -335,7 +344,7 @@ async function main() {
       assessment: 'Uncomplicated P. falciparum malaria, responding well to IV artesunate, afebrile for 12 hours.',
       carePlan: ['Complete IV artesunate course', 'Transition to oral ACT once tolerating orally', 'Repeat blood film before discharge'],
       avatarInitials: 'AA', wardId: wards.get('General Ward')!.id, bed: 'Bed 20',
-      primaryPhysicianId: drWafula.id, admittedAt: daysAgo(1),
+      primaryPhysicianId: drWafula.id, status: 'ADMITTED', admittedAt: daysAgo(1),
       vitals: { create: [
         { label: 'Heart Rate', value: '102', unit: 'bpm', status: 'WARNING' },
         { label: 'Blood Pressure', value: '108/70', unit: 'mmHg', status: 'HEALTHY' },
@@ -366,7 +375,7 @@ async function main() {
       assessment: 'Moderate asthma exacerbation, improving with nebulised salbutamol and oral steroids.',
       carePlan: ['Continue 4-hourly nebulisation', 'Oral prednisolone, 3-day course', 'Asthma action plan review before discharge'],
       avatarInitials: 'FM', wardId: wards.get('Casualty')!.id, bed: 'Bed 5',
-      primaryPhysicianId: drAbdi.id, admittedAt: daysAgo(0),
+      primaryPhysicianId: drAbdi.id, status: 'ADMITTED', admittedAt: daysAgo(0),
       vitals: { create: [
         { label: 'Heart Rate', value: '118', unit: 'bpm', status: 'WARNING' },
         { label: 'Blood Pressure', value: '102/64', unit: 'mmHg', status: 'HEALTHY' },
@@ -396,7 +405,7 @@ async function main() {
       assessment: 'Stable post-CABG course; sternal wound clean, chest tube removed yesterday, mobilising with physiotherapy.',
       carePlan: ['Continue beta-blocker and statin', 'Daily wound checks', 'Cardiac rehabilitation referral before discharge'],
       avatarInitials: 'MK', wardId: wards.get('Cardiac ICU')!.id, bed: 'Bed 2',
-      primaryPhysicianId: drNjeri.id, admittedAt: daysAgo(3),
+      primaryPhysicianId: drNjeri.id, status: 'ADMITTED', admittedAt: daysAgo(3),
       vitals: { create: [
         { label: 'Heart Rate', value: '68', unit: 'bpm', status: 'HEALTHY' },
         { label: 'Blood Pressure', value: '122/78', unit: 'mmHg', status: 'HEALTHY' },
@@ -451,7 +460,7 @@ async function main() {
           wardId: ward.id,
           bed: `Bed ${bedCounter++}`,
           primaryPhysicianId: physicians[genIndex % physicians.length].id,
-          admittedAt: daysAgo(genIndex % 6),
+          status: 'ADMITTED', admittedAt: daysAgo(genIndex % 6),
         },
       })
       genIndex++
@@ -479,7 +488,7 @@ async function main() {
         nextOfKinName: generatedPerson(200 + i, d.sex === 'MALE' ? 'FEMALE' : 'MALE').name,
         phone: generatedPhone(500 + i), nextOfKinPhone: generatedPhone(200 + i), nextOfKinRelation: RELATIONS[i % RELATIONS.length],
         avatarInitials: initials, wardId: wards.get('General Ward')!.id, bed: `Pre-op ${i + 1}`,
-        primaryPhysicianId: physicians[i % physicians.length].id, admittedAt: daysAgo(1),
+        primaryPhysicianId: physicians[i % physicians.length].id, status: 'ADMITTED', admittedAt: daysAgo(1),
       },
     })
     surgeryPatients.set(d.ip, p.id)
@@ -664,6 +673,27 @@ async function main() {
     },
   })
 
+  console.log('Seeding lab catalogue...')
+  // Reference ranges are adult values; the flag is derived from these rather
+  // than typed at the bench.
+  const labTests = [
+    { code: 'HAEM-001', name: 'Full Haemogram', department: 'Haematology', specimen: 'EDTA blood', unit: 'x10^9/L', refLow: 4.0, refHigh: 11.0, refRange: '4.0-11.0', price: 900, turnaroundMins: 60 },
+    { code: 'HAEM-004', name: 'Haemoglobin', department: 'Haematology', specimen: 'EDTA blood', unit: 'g/dL', refLow: 12.0, refHigh: 16.0, refRange: '12.0-16.0', price: 450, turnaroundMins: 45 },
+    { code: 'HAEM-010', name: 'Platelet Count', department: 'Haematology', specimen: 'EDTA blood', unit: 'x10^9/L', refLow: 150, refHigh: 450, refRange: '150-450', price: 500, turnaroundMins: 45 },
+    { code: 'CHEM-020', name: 'Serum Potassium', department: 'Chemistry', specimen: 'Serum', unit: 'mmol/L', refLow: 3.5, refHigh: 5.1, refRange: '3.5-5.1', price: 700, turnaroundMins: 90 },
+    { code: 'CHEM-021', name: 'Serum Creatinine', department: 'Chemistry', specimen: 'Serum', unit: 'umol/L', refLow: 60, refHigh: 110, refRange: '60-110', price: 850, turnaroundMins: 90 },
+    { code: 'CHEM-030', name: 'Random Blood Sugar', department: 'Chemistry', specimen: 'Fluoride plasma', unit: 'mmol/L', refLow: 3.9, refHigh: 7.8, refRange: '3.9-7.8', price: 300, turnaroundMins: 30 },
+    { code: 'CARD-052', name: 'Troponin I', department: 'Chemistry', specimen: 'Serum', unit: 'ng/mL', refLow: null, refHigh: 0.04, refRange: '<0.04', price: 3400, turnaroundMins: 60 },
+    // Qualitative: no numeric bounds, so the technologist sets the flag.
+    { code: 'MICR-001', name: 'Malaria Rapid Diagnostic Test', department: 'Microbiology', specimen: 'Whole blood', unit: null, refLow: null, refHigh: null, refRange: 'Negative', price: 400, turnaroundMins: 20 },
+    { code: 'MICR-005', name: 'Blood Culture', department: 'Microbiology', specimen: 'Blood culture bottle', unit: null, refLow: null, refHigh: null, refRange: 'No growth', price: 2800, turnaroundMins: 4320 },
+    { code: 'MICR-012', name: 'Urinalysis', department: 'Microbiology', specimen: 'Mid-stream urine', unit: null, refLow: null, refHigh: null, refRange: 'Normal', price: 600, turnaroundMins: 40 },
+    { code: 'SERO-002', name: 'HIV Rapid Test', department: 'Serology', specimen: 'Whole blood', unit: null, refLow: null, refHigh: null, refRange: 'Non-reactive', price: 0, turnaroundMins: 30 },
+  ]
+  for (const t of labTests) {
+    await prisma.labTest.create({ data: { ...t, price: t.price } })
+  }
+
   console.log('Seeding queue stations...')
   const stationDefs = [
     { code: 'REC-1', name: 'Reception Desk 1', kind: 'RECEPTION', tokenPrefix: 'R', room: 'Front Desk' },
@@ -675,6 +705,8 @@ async function main() {
     // Renders as a bare token on the public board — the clinic name alone
     // would disclose a diagnosis to everyone in the waiting room.
     { code: 'CCC-1', name: 'Comprehensive Care Clinic', kind: 'CONSULTATION', tokenPrefix: 'P', room: 'Room 8', privateClinic: true },
+    { code: 'LAB-1', name: 'Laboratory', kind: 'LAB', tokenPrefix: 'L', room: 'Lab Reception' },
+    { code: 'IMG-1', name: 'Radiology', kind: 'IMAGING', tokenPrefix: 'X', room: 'X-Ray Suite' },
     { code: 'PHA-1', name: 'Pharmacy Window', kind: 'PHARMACY', tokenPrefix: 'D', room: 'Pharmacy' },
   ]
   for (const st of stationDefs) {

@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'PHYSICIAN' | 'NURSE' | 'BILLING' | 'PHARMACIST'
+export type Role = 'ADMIN' | 'PHYSICIAN' | 'NURSE' | 'BILLING' | 'PHARMACIST' | 'LAB_TECH' | 'RADIOGRAPHER' | 'PHARMACIST'
 
 export interface AuthUser {
   id: string

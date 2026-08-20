@@ -13,6 +13,10 @@ enum Role {
   NURSE
   BILLING
   PHARMACIST
+  // Runs the bench and enters results. Cannot prescribe or dispense.
+  LAB_TECH
+  // Performs imaging. Reporting is a radiologist function, kept separate.
+  RADIOGRAPHER
 }
 
 enum Sex {
@@ -141,6 +145,11 @@ model User {
   surgeriesAsSurgeon  Surgery[]     @relation("Surgeon")
   billingLinesCreated BillingLine[] @relation("BillingCreatedBy")
   labsReviewed        LabResult[]   @relation("LabReviewedBy")
+  labOrdersPlaced     LabOrder[]                 @relation("LabOrderedBy")
+  labItemsCollected   LabOrderItem[]             @relation("LabCollectedBy")
+  labItemsResulted    LabOrderItem[]             @relation("LabResultedBy")
+  labItemsVerified    LabOrderItem[]             @relation("LabVerifiedBy")
+  medicationsGiven    MedicationAdministration[] @relation("MedicationGivenBy")
   alertsResolved      Alert[]       @relation("AlertResolvedBy")
 
   auditLogs            AuditLog[]         @relation("AuditActor")
@@ -203,6 +212,7 @@ model Patient {
   mpesaTransactions MpesaTransaction[]
   auditLogs         AuditLog[]
   visits            Visit[]
+  labOrders         LabOrder[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -532,6 +542,10 @@ model PrescriptionItem {
   dose      String
   route     String
   frequency String
+  /// Doses expected in 24h, derived from `frequency` when prescribed. Stored
+  /// rather than re-parsed, because the free-text frequency is what the
+  /// prescriber actually wrote and must not silently change meaning later.
+  dosesPerDay  Int?
   durationDays Int?
 
   quantityPrescribed Int
@@ -539,7 +553,8 @@ model PrescriptionItem {
 
   instructions String?
 
-  dispenseEvents DispenseEvent[]
+  dispenseEvents  DispenseEvent[]
+  administrations MedicationAdministration[]
 
   @@index([prescriptionId])
   @@index([drugId])
@@ -924,4 +939,176 @@ model Counter {
   /// e.g. "ticket:<stationId>:2026-08-20" or "visit:2026-08".
   key   String @id
   value Int    @default(0)
+}
+
+// ---------------------------------------------------------------------------
+// Laboratory
+// ---------------------------------------------------------------------------
+
+enum LabOrderStatus {
+  ORDERED
+  COLLECTED
+  IN_PROGRESS
+  RESULTED
+  VERIFIED
+  CANCELLED
+  /// Specimen unusable — haemolysed, clotted, insufficient. The order stays
+  /// open so the ward knows a repeat draw is needed rather than silently
+  /// waiting for a result that will never come.
+  REJECTED
+}
+
+enum LabUrgency {
+  ROUTINE
+  URGENT
+  /// Ordered during a resuscitation; jumps the bench queue.
+  STAT
+}
+
+/// Facility test catalogue. Reference ranges live here so a result can be
+/// flagged automatically and consistently, rather than by whoever types it.
+model LabTest {
+  id String @id @default(cuid())
+
+  code       String  @unique
+  name       String
+  /// Grouping for the worklist: Haematology, Chemistry, Microbiology…
+  department String
+  specimen   String
+  unit       String?
+
+  /// Numeric bounds when the test has them; null for qualitative tests
+  /// (culture, blood group) where `flag` is set by the technologist.
+  refLow  Float?
+  refHigh Float?
+  /// Human-readable range printed on the report, e.g. "3.5–5.1" or "Negative".
+  refRange String
+
+  price          Decimal @db.Decimal(10, 2)
+  turnaroundMins Int     @default(120)
+  active         Boolean @default(true)
+
+  items LabOrderItem[]
+
+  createdAt DateTime @default(now())
+
+  @@index([department, active])
+}
+
+model LabOrder {
+  id String @id @default(cuid())
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  /// Present for outpatients; null for a ward request on an inpatient.
+  visitId String?
+
+  orderedById String
+  orderedBy   User   @relation("LabOrderedBy", fields: [orderedById], references: [id])
+
+  urgency LabUrgency @default(ROUTINE)
+  /// Why the test was requested. Required by the API — a bench result is far
+  /// less useful without the question it was meant to answer.
+  clinicalNotes String?
+
+  status LabOrderStatus @default(ORDERED)
+
+  items LabOrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([patientId, createdAt])
+}
+
+model LabOrderItem {
+  id String @id @default(cuid())
+
+  orderId String
+  order   LabOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  labTestId String
+  labTest   LabTest @relation(fields: [labTestId], references: [id])
+
+  status LabOrderStatus @default(ORDERED)
+
+  /// Specimen collection — the point at which the clock starts.
+  specimenLabel   String?
+  collectedAt     DateTime?
+  collectedById   String?
+  collectedBy     User?     @relation("LabCollectedBy", fields: [collectedById], references: [id])
+  rejectionReason String?
+
+  /// Result as entered at the bench.
+  resultValue String?
+  flag        LabFlag?
+  resultedAt  DateTime?
+  resultedById String?
+  resultedBy   User?     @relation("LabResultedBy", fields: [resultedById], references: [id])
+
+  /// Second pair of eyes. Only a verified result reaches the chart — an
+  /// unverified bench figure must never drive a prescribing decision.
+  verifiedAt   DateTime?
+  verifiedById String?
+  verifiedBy   User?     @relation("LabVerifiedBy", fields: [verifiedById], references: [id])
+
+  /// The LabResult row published to the chart on verification.
+  labResultId String? @unique
+
+  @@index([orderId])
+  @@index([status])
+  @@index([labTestId])
+}
+
+// ---------------------------------------------------------------------------
+// Medication administration record (eMAR)
+// ---------------------------------------------------------------------------
+
+enum AdministrationStatus {
+  GIVEN
+  /// Withheld by the nurse — a reason is mandatory.
+  OMITTED
+  /// Patient declined. Distinct from OMITTED because the follow-up differs.
+  REFUSED
+  /// Given late enough to be worth recording as such.
+  GIVEN_LATE
+}
+
+/// One recorded drug administration on a ward round.
+///
+/// Append-only in practice: a mistaken entry is corrected by a new entry with
+/// a reason, never by editing the original, because the MAR is a legal record
+/// of what was put into a patient.
+model MedicationAdministration {
+  id String @id @default(cuid())
+
+  prescriptionItemId String
+  prescriptionItem   PrescriptionItem @relation(fields: [prescriptionItemId], references: [id], onDelete: Cascade)
+
+  status AdministrationStatus
+
+  /// The dose actually given, which is not always the dose prescribed.
+  doseGiven String?
+  route     String?
+
+  /// When the round expected it, and when it actually happened.
+  scheduledFor DateTime?
+  administeredAt DateTime @default(now())
+
+  administeredById String
+  administeredBy   User   @relation("MedicationGivenBy", fields: [administeredById], references: [id])
+
+  /// Mandatory for OMITTED and REFUSED.
+  reason String?
+  notes  String?
+
+  /// Second signature, required for controlled drugs.
+  witnessedById String?
+
+  createdAt DateTime @default(now())
+
+  @@index([prescriptionItemId, administeredAt])
+  @@index([administeredAt])
 }
